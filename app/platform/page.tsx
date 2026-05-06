@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePlatformAdmin } from "@/lib/platform";
 import { prisma } from "@/lib/prisma";
 
@@ -23,7 +24,7 @@ export default async function PlatformDashboard() {
 
       <div className="mt-8 grid sm:grid-cols-4 gap-3">
         <Stat label="Buildings" value={buildings.length} />
-        <Stat label="Users" value={totalUsers} />
+        <Stat label="Users" value={totalUsers} href="/platform/users" />
         <Stat label="Units" value={totalUnits} />
         <Stat label="Work orders" value={totalWorkOrders} />
       </div>
@@ -60,11 +61,24 @@ export default async function PlatformDashboard() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="p-4 rounded-md border" style={{ borderColor: "currentColor" }}>
+function Stat({ label, value, href }: { label: string; value: number; href?: string }) {
+  const inner = (
+    <>
       <div className="text-3xl font-semibold">{value}</div>
       <div className="text-sm opacity-60 mt-1">{label}</div>
+    </>
+  );
+  const className = "block p-4 rounded-md border";
+  if (href) {
+    return (
+      <Link href={href} className={`${className} hover:opacity-80`} style={{ borderColor: "currentColor" }}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <div className={className} style={{ borderColor: "currentColor" }}>
+      {inner}
     </div>
   );
 }

@@ -12,6 +12,10 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       >
         <div className="flex items-center gap-6">
           <Link href="/" className="font-semibold">BuildingSync · Platform Admin</Link>
+          <nav className="flex gap-4 text-sm">
+            <Link href="/platform" className="opacity-70 hover:opacity-100">Overview</Link>
+            <Link href="/platform/users" className="opacity-70 hover:opacity-100">Users</Link>
+          </nav>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="opacity-60">{authUser.email}</span>
