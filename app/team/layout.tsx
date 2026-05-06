@@ -17,6 +17,9 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
             <nav className="flex gap-5 text-sm">
               <Link href="/team/work-orders" className="text-muted-foreground hover:text-foreground transition-colors">Work orders</Link>
               <Link href="/team/residents" className="text-muted-foreground hover:text-foreground transition-colors">Residents</Link>
+              {(appUser.role === "building_manager" || appUser.role === "facility_manager") && (
+                <Link href="/team/units" className="text-muted-foreground hover:text-foreground transition-colors">Units</Link>
+              )}
               {appUser.role === "building_manager" && (
                 <Link href="/team/announcements" className="text-muted-foreground hover:text-foreground transition-colors">Announcements</Link>
               )}

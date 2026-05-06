@@ -1,0 +1,82 @@
+import { requireTeam } from "@/lib/team";
+import { prisma } from "@/lib/prisma";
+import { AddUnitForm } from "./AddUnitForm";
+
+const CAN_MANAGE = ["building_manager", "facility_manager"];
+
+export default async function TeamUnitsPage() {
+  const { appUser } = await requireTeam();
+
+  if (!appUser.buildingId) {
+    return (
+      <main className="px-6 py-10 max-w-5xl mx-auto">
+        <h1 className="text-3xl font-semibold tracking-tight">Units</h1>
+        <p className="mt-3 text-sm text-muted-foreground">No building assigned to your account.</p>
+      </main>
+    );
+  }
+
+  const units = await prisma.unit.findMany({
+    where: { buildingId: appUser.buildingId },
+    orderBy: [{ floor: "asc" }, { unitNumber: "asc" }],
+    include: {
+      _count: { select: { users: true } },
+    },
+  });
+
+  const canManage = CAN_MANAGE.includes(appUser.role);
+  const occupied = units.filter((u) => u._count.users > 0).length;
+
+  return (
+    <main className="px-6 py-10 max-w-5xl mx-auto">
+      <h1 className="text-3xl font-semibold tracking-tight">Units</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {units.length} total · {occupied} occupied · {units.length - occupied} available
+      </p>
+
+      {canManage && (
+        <section className="mt-8 bg-card border border-border rounded-md p-5">
+          <h2 className="text-base font-semibold">Add a unit</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Floor and rent are optional.</p>
+          <AddUnitForm />
+        </section>
+      )}
+
+      <section className="mt-10">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">All units</h2>
+        {units.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No units yet. Add one above to start onboarding residents.</p>
+        ) : (
+          <div className="mt-3 bg-card border border-border rounded-md overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-5 font-semibold">Unit</th>
+                  <th className="text-left py-3 px-5 font-semibold">Floor</th>
+                  <th className="text-right py-3 px-5 font-semibold">Rent</th>
+                  <th className="text-right py-3 px-5 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {units.map((u) => (
+                  <tr key={u.id}>
+                    <td className="py-3 px-5 font-medium">Unit {u.unitNumber}</td>
+                    <td className="py-3 px-5 text-muted-foreground">{u.floor ?? "—"}</td>
+                    <td className="py-3 px-5 text-right tabular-nums">
+                      {u.rentAmount ? `$${Number(u.rentAmount).toLocaleString()}` : "—"}
+                    </td>
+                    <td className="py-3 px-5 text-right">
+                      <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border ${u._count.users > 0 ? "bg-accent/10 text-accent border-accent/30" : "bg-muted/30 text-muted-foreground border-border"}`}>
+                        {u._count.users > 0 ? "occupied" : "available"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
