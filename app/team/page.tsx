@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 
-export default async function AdminHome() {
+export default async function TeamHome() {
   const { appUser } = await requireTeam();
 
   const [building, openCount, residentCount, announcementCount] = appUser.buildingId
@@ -18,38 +18,46 @@ export default async function AdminHome() {
 
   return (
     <main className="px-6 py-10 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-semibold">Welcome, {appUser.role.replace("_", " ")}</h1>
-      <p className="mt-2 opacity-70">
-        {building ? `Managing ${building.name}` : "Your account is not yet linked to a building."}
-      </p>
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{appUser.role.replace("_", " ")}</p>
+        <h1 className="text-4xl font-semibold tracking-tight">{building ? building.name : "Your team"}</h1>
+        {building && (
+          <p className="text-sm text-muted-foreground">
+            {building.address}, {building.city}, {building.state} {building.zipCode}
+          </p>
+        )}
+        {!building && (
+          <p className="text-sm text-muted-foreground">
+            Your account is not yet linked to a building. Ask your platform admin.
+          </p>
+        )}
+      </div>
 
-      <div className="mt-8 grid sm:grid-cols-3 gap-3">
-        <StatCard href="/team/work-orders" value={openCount} label="Open work orders" />
-        <StatCard href="/team/residents" value={residentCount} label="Residents" />
-        <StatCard href={isBM ? "/team/announcements" : null} value={announcementCount} label="Announcements" />
+      <div className="mt-10 grid sm:grid-cols-3 gap-3">
+        <StatLink href="/team/work-orders" value={openCount} label="Open work orders" />
+        <StatLink href="/team/residents" value={residentCount} label="Residents" />
+        <StatLink
+          href={isBM ? "/team/announcements" : null}
+          value={announcementCount}
+          label="Announcements"
+        />
       </div>
     </main>
   );
 }
 
-function StatCard({ href, value, label }: { href: string | null; value: number; label: string }) {
+function StatLink({ href, value, label }: { href: string | null; value: number; label: string }) {
   const inner = (
     <>
-      <div className="text-3xl font-semibold">{value}</div>
-      <div className="text-sm opacity-60 mt-1">{label}</div>
+      <div className="text-4xl font-semibold tabular-nums">{value}</div>
+      <div className="text-sm text-muted-foreground mt-1">{label}</div>
     </>
   );
-  const className = "block p-4 rounded-md border transition-opacity";
+  const className = "block p-5 bg-card border border-border rounded-md transition-colors";
   if (href) {
     return (
-      <Link href={href} className={`${className} hover:opacity-80`} style={{ borderColor: "currentColor" }}>
-        {inner}
-      </Link>
+      <Link href={href} className={`${className} hover:border-accent`}>{inner}</Link>
     );
   }
-  return (
-    <div className={className} style={{ borderColor: "currentColor", opacity: 0.6 }}>
-      {inner}
-    </div>
-  );
+  return <div className={`${className} opacity-60`}>{inner}</div>;
 }

@@ -28,94 +28,92 @@ export default async function UsersPage() {
 
   return (
     <main className="px-6 py-10 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Users</h1>
-          <p className="mt-1 text-sm opacity-60">{users.length} total</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Users</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{users.length} total</p>
         </div>
-        <Link href="/platform" className="text-sm opacity-70 hover:opacity-100">← Back to platform</Link>
+        <Link href="/platform" className="text-sm text-muted-foreground hover:text-foreground">← Overview</Link>
       </div>
 
-      <table className="mt-8 w-full text-sm border-collapse">
-        <thead>
-          <tr className="text-left opacity-60">
-            <th className="py-2 pr-4 font-medium">Email</th>
-            <th className="py-2 pr-4 font-medium">Role</th>
-            <th className="py-2 pr-4 font-medium">Building</th>
-            <th className="py-2 pr-4 font-medium">Unit</th>
-            <th className="py-2 pl-4 font-medium text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => {
-            const isMe = u.id === appUser.id;
-            return (
-              <tr key={u.id} className="border-t" style={{ borderColor: "currentColor" }}>
-                <td className="py-3 pr-4 align-top">
-                  <div className="font-medium">{u.email}</div>
-                  {isMe && <div className="text-xs opacity-50">that's you</div>}
-                </td>
-                <td className="py-3 pr-4 align-top">
-                  <form action={updateUser} className="flex items-center gap-2">
-                    <input type="hidden" name="userId" value={u.id} />
-                    <input type="hidden" name="buildingId" value={u.buildingId ?? ""} />
-                    <select
-                      name="role"
-                      defaultValue={u.role}
-                      className="px-2 py-1 rounded-md border bg-transparent text-sm"
-                      style={{ borderColor: "currentColor" }}
-                    >
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>{r.replace("_", " ")}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="submit"
-                      className="text-xs px-2 py-1 rounded-md border opacity-70 hover:opacity-100"
-                      style={{ borderColor: "currentColor" }}
-                    >
-                      Save role
-                    </button>
-                  </form>
-                </td>
-                <td className="py-3 pr-4 align-top">
-                  <form action={updateUser} className="flex items-center gap-2">
-                    <input type="hidden" name="userId" value={u.id} />
-                    <input type="hidden" name="role" value={u.role} />
-                    <select
-                      name="buildingId"
-                      defaultValue={u.buildingId ?? ""}
-                      className="px-2 py-1 rounded-md border bg-transparent text-sm"
-                      style={{ borderColor: "currentColor" }}
-                    >
-                      <option value="">— none —</option>
-                      {buildings.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="submit"
-                      className="text-xs px-2 py-1 rounded-md border opacity-70 hover:opacity-100"
-                      style={{ borderColor: "currentColor" }}
-                    >
-                      Save bldg
-                    </button>
-                  </form>
-                </td>
-                <td className="py-3 pr-4 align-top">
-                  {u.unit ? `Unit ${u.unit.unitNumber}` : <span className="opacity-40">—</span>}
-                </td>
-                <td className="py-3 pl-4 align-top text-right opacity-60 text-xs">
-                  joined {new Date(u.createdAt).toLocaleDateString()}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="mt-8 bg-card border border-border rounded-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+            <tr className="border-b border-border">
+              <th className="text-left py-3 px-5 font-semibold">Email</th>
+              <th className="text-left py-3 px-5 font-semibold">Role</th>
+              <th className="text-left py-3 px-5 font-semibold">Building</th>
+              <th className="text-left py-3 px-5 font-semibold">Unit</th>
+              <th className="text-right py-3 px-5 font-semibold">Joined</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {users.map((u) => {
+              const isMe = u.id === appUser.id;
+              return (
+                <tr key={u.id}>
+                  <td className="py-3 px-5 align-top">
+                    <div className="font-medium">{u.email}</div>
+                    {isMe && <div className="text-[10px] uppercase tracking-wider text-accent mt-0.5">that's you</div>}
+                  </td>
+                  <td className="py-3 px-5 align-top">
+                    <form action={updateUser} className="flex items-center gap-2">
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input type="hidden" name="buildingId" value={u.buildingId ?? ""} />
+                      <select
+                        name="role"
+                        defaultValue={u.role}
+                        className="px-2 py-1 rounded-md border border-border bg-input/30 text-sm focus:ring-2 focus:ring-ring outline-none"
+                      >
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>{r.replace("_", " ")}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="text-xs px-2 py-1 rounded-md border border-border hover:bg-muted transition-colors"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  </td>
+                  <td className="py-3 px-5 align-top">
+                    <form action={updateUser} className="flex items-center gap-2">
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input type="hidden" name="role" value={u.role} />
+                      <select
+                        name="buildingId"
+                        defaultValue={u.buildingId ?? ""}
+                        className="px-2 py-1 rounded-md border border-border bg-input/30 text-sm focus:ring-2 focus:ring-ring outline-none"
+                      >
+                        <option value="">— none —</option>
+                        {buildings.map((b) => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="text-xs px-2 py-1 rounded-md border border-border hover:bg-muted transition-colors"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  </td>
+                  <td className="py-3 px-5 align-top text-muted-foreground">
+                    {u.unit ? `Unit ${u.unit.unitNumber}` : "—"}
+                  </td>
+                  <td className="py-3 px-5 align-top text-right text-xs text-muted-foreground tabular-nums">
+                    {new Date(u.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-      <p className="mt-8 text-xs opacity-50">
-        Unit assignment, invite-by-email, and CSV bulk-onboarding land post-launch. For now, residents/tenants self-sign-up at /signup, then promote here.
+      <p className="mt-8 text-xs text-muted-foreground">
+        Unit assignment, invite-by-email, and CSV bulk-onboarding land post-launch.
       </p>
     </main>
   );

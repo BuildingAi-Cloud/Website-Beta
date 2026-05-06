@@ -2,14 +2,14 @@ import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { WorkOrderRow } from "./WorkOrderRow";
 
-export default async function AdminWorkOrdersPage() {
+export default async function TeamWorkOrdersPage() {
   const { appUser } = await requireTeam();
 
   if (!appUser.buildingId) {
     return (
       <main className="px-6 py-10 max-w-5xl mx-auto">
-        <h1 className="text-2xl font-semibold">Work orders</h1>
-        <p className="mt-3 opacity-70 text-sm">No building assigned to your account.</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Work orders</h1>
+        <p className="mt-3 text-sm text-muted-foreground">No building assigned to your account.</p>
       </main>
     );
   }
@@ -29,13 +29,17 @@ export default async function AdminWorkOrdersPage() {
 
   return (
     <main className="px-6 py-10 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-semibold">Work orders</h1>
-      <p className="mt-1 text-sm opacity-60">{workOrders.length} total</p>
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Work orders</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{workOrders.length} total</p>
+      </div>
 
       {workOrders.length === 0 ? (
-        <p className="mt-6 text-sm opacity-70">No work orders yet. Residents submit them from /dashboard/maintenance.</p>
+        <p className="mt-10 text-sm text-muted-foreground">
+          No work orders yet. Residents submit them from /dashboard/maintenance.
+        </p>
       ) : (
-        <ul className="mt-6 space-y-2">
+        <ul className="mt-8 space-y-2">
           {workOrders.map((wo) => (
             <WorkOrderRow
               key={wo.id}

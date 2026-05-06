@@ -12,7 +12,7 @@ export function MaintenanceForm({ hasBuilding }: { hasBuilding: boolean }) {
 
   if (!hasBuilding) {
     return (
-      <p className="mt-3 text-sm opacity-70">
+      <p className="mt-3 text-sm text-muted-foreground">
         You can submit a request once a Building Manager assigns you to a building.
       </p>
     );
@@ -41,21 +41,20 @@ export function MaintenanceForm({ hasBuilding }: { hasBuilding: boolean }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-3 space-y-3">
+    <form onSubmit={onSubmit} className="mt-4 space-y-3">
       <label className="block">
-        <span className="text-sm">Title</span>
+        <span className="block text-sm font-medium mb-1.5">Title</span>
         <input
           required
           maxLength={200}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Leaky faucet in kitchen"
-          className="mt-1 w-full px-3 py-2 rounded-md border bg-transparent"
-          style={{ borderColor: "currentColor" }}
+          className="w-full px-3 py-2 rounded-md border border-border bg-input/30 outline-none focus:ring-2 focus:ring-ring focus:border-ring transition"
         />
       </label>
       <label className="block">
-        <span className="text-sm">Description</span>
+        <span className="block text-sm font-medium mb-1.5">Description</span>
         <textarea
           required
           rows={4}
@@ -63,16 +62,14 @@ export function MaintenanceForm({ hasBuilding }: { hasBuilding: boolean }) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Started yesterday. Constant drip, water pooling under sink."
-          className="mt-1 w-full px-3 py-2 rounded-md border bg-transparent"
-          style={{ borderColor: "currentColor" }}
+          className="w-full px-3 py-2 rounded-md border border-border bg-input/30 outline-none focus:ring-2 focus:ring-ring focus:border-ring transition"
         />
       </label>
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <button
         type="submit"
         disabled={submitting}
-        className="px-4 py-2 rounded-md font-medium disabled:opacity-50"
-        style={{ background: "var(--foreground)", color: "var(--background)" }}
+        className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {submitting ? "Submitting…" : "Submit request"}
       </button>

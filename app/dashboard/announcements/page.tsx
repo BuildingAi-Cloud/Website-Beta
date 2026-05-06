@@ -14,27 +14,23 @@ export default async function AnnouncementsPage() {
     : [];
 
   return (
-    <main className="min-h-[100dvh] px-6 py-10 max-w-3xl mx-auto">
-      <Link href="/dashboard" className="text-sm opacity-70 hover:opacity-100">← Back</Link>
-      <h1 className="mt-4 text-3xl font-semibold">Announcements</h1>
+    <main className="min-h-dvh px-6 py-10 max-w-3xl mx-auto">
+      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight">Announcements</h1>
 
       {!appUser.buildingId ? (
-        <p className="mt-6 text-sm opacity-70">
+        <p className="mt-8 text-sm text-muted-foreground">
           You'll see announcements once a Building Manager assigns you to a building.
         </p>
       ) : announcements.length === 0 ? (
-        <p className="mt-6 text-sm opacity-70">No announcements yet.</p>
+        <p className="mt-8 text-sm text-muted-foreground">No announcements yet.</p>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <ul className="mt-8 space-y-3">
           {announcements.map((a) => (
-            <li
-              key={a.id}
-              className="p-4 rounded-md border"
-              style={{ borderColor: "currentColor" }}
-            >
-              <h2 className="font-medium">{a.title}</h2>
-              <p className="mt-1 text-sm opacity-80 whitespace-pre-wrap">{a.body}</p>
-              <p className="mt-2 text-xs opacity-50">
+            <li key={a.id} className="bg-card border border-border rounded-md p-5">
+              <h2 className="font-semibold">{a.title}</h2>
+              <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{a.body}</p>
+              <p className="mt-4 text-xs text-muted-foreground/70">
                 {new Date(a.createdAt).toLocaleString()}
               </p>
             </li>

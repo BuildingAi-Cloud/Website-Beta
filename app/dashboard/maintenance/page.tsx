@@ -3,6 +3,13 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MaintenanceForm } from "./MaintenanceForm";
 
+const STATUS_TONE: Record<string, string> = {
+  open: "bg-accent/10 text-accent border-accent/30",
+  assigned: "bg-muted text-muted-foreground border-border",
+  in_progress: "bg-foreground/5 text-foreground border-border",
+  closed: "bg-muted/50 text-muted-foreground border-border line-through",
+};
+
 export default async function MaintenancePage() {
   const { appUser } = await requireUser();
 
@@ -13,33 +20,31 @@ export default async function MaintenancePage() {
   });
 
   return (
-    <main className="min-h-[100dvh] px-6 py-10 max-w-3xl mx-auto">
-      <Link href="/dashboard" className="text-sm opacity-70 hover:opacity-100">← Back</Link>
-      <h1 className="mt-4 text-3xl font-semibold">Maintenance</h1>
+    <main className="min-h-dvh px-6 py-10 max-w-3xl mx-auto">
+      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
+      <h1 className="mt-4 text-3xl font-semibold tracking-tight">Maintenance</h1>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-medium">New request</h2>
+      <section className="mt-8 bg-card border border-border rounded-md p-5">
+        <h2 className="text-base font-semibold">New request</h2>
         <MaintenanceForm hasBuilding={Boolean(appUser.buildingId)} />
       </section>
 
-      <section className="mt-12">
-        <h2 className="text-lg font-medium">Your requests</h2>
+      <section className="mt-10">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Your requests</h2>
         {workOrders.length === 0 ? (
-          <p className="mt-2 text-sm opacity-70">No requests yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">No requests yet.</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {workOrders.map((wo) => (
-              <li
-                key={wo.id}
-                className="p-3 rounded-md border text-sm"
-                style={{ borderColor: "currentColor" }}
-              >
-                <div className="flex items-center justify-between">
+              <li key={wo.id} className="bg-card border border-border rounded-md p-4">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className="font-medium">{wo.title}</span>
-                  <span className="text-xs uppercase tracking-wide opacity-60">{wo.status}</span>
+                  <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border ${STATUS_TONE[wo.status]}`}>
+                    {wo.status.replace("_", " ")}
+                  </span>
                 </div>
-                <p className="mt-1 opacity-70">{wo.description}</p>
-                <p className="mt-2 text-xs opacity-50">
+                <p className="mt-2 text-sm text-muted-foreground">{wo.description}</p>
+                <p className="mt-3 text-xs text-muted-foreground/70">
                   Opened {new Date(wo.createdAt).toLocaleString()}
                 </p>
               </li>

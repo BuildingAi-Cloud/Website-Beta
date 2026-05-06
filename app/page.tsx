@@ -1,8 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { LinkButton, Wordmark } from "@/components/ui";
 
 const ADMIN_HOST = process.env.ADMIN_HOST || "admin.buildingsync.app";
 
@@ -14,8 +14,6 @@ export default async function Home() {
   const supabase = createClient(await cookies());
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Authed visitors → route to the surface that matches their role on the
-  // right host. Platform admins are bounced to admin.* if they came via www.
   if (user) {
     const appUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (appUser) {
@@ -37,29 +35,20 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-[100dvh] flex flex-col items-center justify-center px-6">
-      <div className="max-w-2xl w-full text-center space-y-6">
-        <h1 className="text-4xl font-semibold tracking-tight">BuildingSync</h1>
-        <p className="text-lg opacity-70">
-          Property management for residents, tenants, and staff.
+    <main className="min-h-dvh flex flex-col items-center justify-center px-6">
+      <div className="max-w-2xl w-full text-center space-y-8">
+        <Wordmark className="text-3xl block" />
+        <h1 className="text-5xl sm:text-6xl font-display tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+          Run your building<br />from one place.
+        </h1>
+        <p className="text-lg text-muted-foreground max-w-md mx-auto">
+          Maintenance, announcements, and payments for residents, tenants, and the team that keeps the lights on.
         </p>
-        <div className="flex gap-3 justify-center">
-          <Link
-            href="/signin"
-            className="px-5 py-2.5 rounded-md font-medium"
-            style={{ background: "var(--foreground)", color: "var(--background)" }}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/signup"
-            className="px-5 py-2.5 rounded-md border"
-            style={{ borderColor: "currentColor" }}
-          >
-            Sign up
-          </Link>
+        <div className="flex gap-3 justify-center pt-2">
+          <LinkButton href="/signin">Sign in</LinkButton>
+          <LinkButton href="/signup" variant="outline">Sign up</LinkButton>
         </div>
-        <p className="text-xs opacity-50">R1 · {process.env.NODE_ENV}</p>
+        <p className="text-xs text-muted-foreground/70 pt-8">R1 · {process.env.NODE_ENV}</p>
       </div>
     </main>
   );
