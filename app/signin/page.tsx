@@ -20,7 +20,14 @@ export default function SignInPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      // Translate the generic "Invalid login credentials" into a specific
+      // hint when Supabase tells us the email isn't confirmed yet.
+      const code = (error as { code?: string }).code;
+      if (code === "email_not_confirmed") {
+        setError("Check your inbox to confirm this email before signing in.");
+      } else {
+        setError(error.message);
+      }
       return;
     }
     // Let the root page route by role server-side. On admin.* host, root

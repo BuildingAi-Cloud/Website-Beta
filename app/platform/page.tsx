@@ -30,7 +30,16 @@ export default async function PlatformDashboard() {
       </div>
 
       <section className="mt-10">
-        <h2 className="text-lg font-medium">Buildings</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Buildings</h2>
+          <Link
+            href="/platform/buildings/new"
+            className="text-sm px-3 py-1.5 rounded-md border hover:opacity-80"
+            style={{ borderColor: "currentColor" }}
+          >
+            + New building
+          </Link>
+        </div>
         {buildings.length === 0 ? (
           <p className="mt-2 text-sm opacity-70">No buildings yet.</p>
         ) : (
