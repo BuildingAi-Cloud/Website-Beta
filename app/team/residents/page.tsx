@@ -1,6 +1,7 @@
 import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { AddResidentForm } from "./AddResidentForm";
+import { BulkAddForm } from "./BulkAddForm";
 
 const CAN_ADD = ["building_manager", "facility_manager"];
 
@@ -42,13 +43,19 @@ export default async function TeamResidentsPage() {
       <p className="mt-1 text-sm text-muted-foreground">{residents.length} in this building</p>
 
       {canAdd && (
-        <section className="mt-8 bg-card border border-border rounded-md p-5">
-          <h2 className="text-base font-semibold">Add a resident</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Creates an account and links it to this building. They sign in at /signin.
-          </p>
-          <AddResidentForm units={units} />
-        </section>
+        <div className="mt-8 grid lg:grid-cols-2 gap-3">
+          <section className="bg-card border border-border rounded-md p-5">
+            <h2 className="text-base font-semibold">Add a resident</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Creates an account and links it to this building. They sign in at /signin.
+            </p>
+            <AddResidentForm units={units} />
+          </section>
+          <section className="bg-card border border-border rounded-md p-5">
+            <h2 className="text-base font-semibold">Bulk onboard via CSV</h2>
+            <BulkAddForm />
+          </section>
+        </div>
       )}
 
       <section className="mt-10">
