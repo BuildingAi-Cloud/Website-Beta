@@ -8,8 +8,8 @@ const STAFF_ROLES = ["building_manager", "facility_manager", "concierge"] as con
 export default async function DashboardPage() {
   const { authUser, appUser } = await requireUser();
 
-  // Resident dashboard is for residents/tenants only. Staff land on /admin.
-  if ((STAFF_ROLES as readonly string[]).includes(appUser.role)) redirect("/admin");
+  // Resident dashboard is for residents/tenants only. Staff land on /team.
+  if ((STAFF_ROLES as readonly string[]).includes(appUser.role)) redirect("/team");
 
   const building = appUser.buildingId
     ? await prisma.building.findUnique({ where: { id: appUser.buildingId } })

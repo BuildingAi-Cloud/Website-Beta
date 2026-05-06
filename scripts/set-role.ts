@@ -7,7 +7,7 @@ loadEnv({ path: ".env.local" });
 import { PrismaClient, type UserRole } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const VALID_ROLES: UserRole[] = ["resident", "tenant", "concierge", "facility_manager", "building_manager"];
+const VALID_ROLES: UserRole[] = ["resident", "tenant", "concierge", "facility_manager", "building_manager", "platform_admin"];
 
 async function main() {
   const [email, role] = process.argv.slice(2);
@@ -30,9 +30,9 @@ async function main() {
     console.error(`No User with email ${email}. Have they signed in once?`);
     process.exit(1);
   }
-  // Staff aren't tied to a specific unit — they manage the whole building.
-  const STAFF: UserRole[] = ["building_manager", "facility_manager", "concierge"];
-  const clearUnit = STAFF.includes(role as UserRole);
+  // Staff and platform admins aren't tied to a specific unit.
+  const NON_RESIDENT: UserRole[] = ["building_manager", "facility_manager", "concierge", "platform_admin"];
+  const clearUnit = NON_RESIDENT.includes(role as UserRole);
 
   const updated = await prisma.user.update({
     where: { id: user.id },

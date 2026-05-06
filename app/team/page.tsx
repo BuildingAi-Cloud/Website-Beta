@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/admin";
+import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminHome() {
-  const { appUser } = await requireAdmin();
+  const { appUser } = await requireTeam();
 
   const [building, openCount, residentCount, announcementCount] = appUser.buildingId
     ? await Promise.all([
@@ -24,9 +24,9 @@ export default async function AdminHome() {
       </p>
 
       <div className="mt-8 grid sm:grid-cols-3 gap-3">
-        <StatCard href="/admin/work-orders" value={openCount} label="Open work orders" />
-        <StatCard href="/admin/residents" value={residentCount} label="Residents" />
-        <StatCard href={isBM ? "/admin/announcements" : null} value={announcementCount} label="Announcements" />
+        <StatCard href="/team/work-orders" value={openCount} label="Open work orders" />
+        <StatCard href="/team/residents" value={residentCount} label="Residents" />
+        <StatCard href={isBM ? "/team/announcements" : null} value={announcementCount} label="Announcements" />
       </div>
     </main>
   );

@@ -1,9 +1,9 @@
-import { requireAdmin } from "@/lib/admin";
+import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { WorkOrderRow } from "./WorkOrderRow";
 
 export default async function AdminWorkOrdersPage() {
-  const { appUser } = await requireAdmin();
+  const { appUser } = await requireTeam();
 
   if (!appUser.buildingId) {
     return (

@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin";
+import { requireTeam } from "@/lib/team";
 
 export default async function AdminPackagesPage() {
-  const { appUser } = await requireAdmin();
+  const { appUser } = await requireTeam();
   if (appUser.role !== "concierge" && appUser.role !== "building_manager") {
-    redirect("/admin");
+    redirect("/team");
   }
 
   return (

@@ -23,9 +23,10 @@ export default function SignInPage() {
       setError(error.message);
       return;
     }
-    const isAdminHost =
-      typeof window !== "undefined" && window.location.host.startsWith("admin.");
-    router.push(isAdminHost ? "/admin" : "/dashboard");
+    // Let the root page route by role server-side. On admin.* host, root
+    // gets rewritten to /platform; on www.*, it role-routes to /team or
+    // /dashboard.
+    router.push("/");
     router.refresh();
   }
 

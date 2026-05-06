@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin";
+import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { AnnouncementForm } from "./AnnouncementForm";
 
 export default async function AdminAnnouncementsPage() {
-  const { appUser } = await requireAdmin();
-  if (appUser.role !== "building_manager") redirect("/admin");
+  const { appUser } = await requireTeam();
+  if (appUser.role !== "building_manager") redirect("/team");
 
   const announcements = appUser.buildingId
     ? await prisma.announcement.findMany({

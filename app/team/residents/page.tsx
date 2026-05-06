@@ -1,8 +1,8 @@
-import { requireAdmin } from "@/lib/admin";
+import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminResidentsPage() {
-  const { appUser } = await requireAdmin();
+  const { appUser } = await requireTeam();
 
   if (!appUser.buildingId) {
     return (

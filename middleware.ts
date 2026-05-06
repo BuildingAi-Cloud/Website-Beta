@@ -3,9 +3,9 @@ import { updateSession } from "@/utils/supabase/middleware";
 
 const ADMIN_HOST = process.env.ADMIN_HOST || "admin.buildingsync.app";
 
-// Paths that must NOT be prefixed with /admin even when served from the
-// admin subdomain — auth flows, API routes, public assets, and anything
-// already addressed under /admin.
+// Paths that must NOT be prefixed with /platform on the admin host —
+// shared auth flows, API routes, public assets, and anything already
+// addressed under /platform.
 const PASS_THROUGH_PREFIXES = [
   "/signin",
   "/signup",
@@ -13,7 +13,7 @@ const PASS_THROUGH_PREFIXES = [
   "/offline",
   "/api",
   "/_next",
-  "/admin",
+  "/platform",
 ];
 
 const STATIC_FILE = /\.(svg|png|jpe?g|gif|webp|ico|js|css|json|webmanifest|txt|map)$/i;
@@ -31,9 +31,8 @@ export async function middleware(request: NextRequest) {
     ) || STATIC_FILE.test(url.pathname);
   if (passThrough) return response;
 
-  // Rewrite root and admin-relative paths into the /admin segment.
-  // e.g. admin.buildingsync.app/work-orders → /admin/work-orders
-  url.pathname = `/admin${url.pathname === "/" ? "" : url.pathname}`;
+  // admin.buildingsync.app → /platform/* surface (BuildingSync company admin)
+  url.pathname = `/platform${url.pathname === "/" ? "" : url.pathname}`;
   return NextResponse.rewrite(url, { headers: response.headers });
 }
 
