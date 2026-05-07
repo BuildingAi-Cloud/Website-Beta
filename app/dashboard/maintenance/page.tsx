@@ -38,12 +38,12 @@ export default async function MaintenancePage() {
             {workOrders.map((wo) => (
               <li key={wo.id} className="bg-card border border-border rounded-md p-4">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-medium">{wo.title}</span>
+                  <span className="font-medium">{wo.issue}</span>
                   <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border ${STATUS_TONE[wo.status]}`}>
                     {wo.status.replace("_", " ")}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{wo.description}</p>
+                {wo.description && <p className="mt-2 text-sm text-muted-foreground">{wo.description}</p>}
                 <p className="mt-3 text-xs text-muted-foreground/70">
                   Opened {new Date(wo.createdAt).toLocaleString()}
                 </p>

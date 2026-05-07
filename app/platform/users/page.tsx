@@ -9,7 +9,7 @@ const ROLES = [
   "concierge",
   "facility_manager",
   "building_manager",
-  "platform_admin",
+  "admin",
 ] as const;
 
 export default async function UsersPage() {
@@ -20,7 +20,7 @@ export default async function UsersPage() {
       orderBy: [{ role: "asc" }, { email: "asc" }],
       include: {
         building: { select: { name: true } },
-        unit: { select: { unitNumber: true } },
+        unitRel: { select: { unitNumber: true } },
       },
     }),
     prisma.building.findMany({ orderBy: { name: "asc" } }),
@@ -100,7 +100,7 @@ export default async function UsersPage() {
                     </form>
                   </td>
                   <td className="py-3 px-5 align-top text-muted-foreground">
-                    {u.unit ? `Unit ${u.unit.unitNumber}` : "—"}
+                    {u.unitRel ? `Unit ${u.unitRel.unitNumber}` : u.unit ? `Unit ${u.unit}` : "—"}
                   </td>
                   <td className="py-3 px-5 align-top text-right text-xs text-muted-foreground tabular-nums">
                     {new Date(u.createdAt).toLocaleDateString()}

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
@@ -40,10 +41,11 @@ export async function addUnit(_prev: unknown, formData: FormData): Promise<Resul
   try {
     await prisma.unit.create({
       data: {
+        id: randomUUID(),
         buildingId: session.appUser.buildingId,
         unitNumber,
         floor: floor ?? null,
-        rentAmount: rentAmount ? new Prisma.Decimal(rentAmount) : null,
+        rentAmount: rentAmount ?? null,
       },
     });
   } catch (e) {

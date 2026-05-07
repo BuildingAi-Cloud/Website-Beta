@@ -1,5 +1,19 @@
-// BuildingSync R1 — slim schema
-// Models live alongside Supabase Auth (auth.users). Prisma owns app data.
+// BuildingSync — Prisma schema reconciled with the live Supabase DB
+// (project dbhmfvqvluqnhepujdyz). The DB was originally provisioned by
+// the R&D project (super-octo-rotary-phone) with a wider schema; this
+// file models only the tables Website-Beta R1 actually uses, preserving
+// the live column names (e.g. WorkOrder.issue, Lease.leaseStartDate).
+//
+// R&D-only tables that exist on the database but aren't modeled here
+// (and we don't need for R1):
+//   Amenity, AmenityRule, AmenityBooking, GuestVisit, VendorAccess,
+//   Notification, NotificationSetting, NotificationTemplate, Integration,
+//   SystemConfig, License, AiUsage, Session, MFACode, Permission,
+//   Device, Telemetry, Alert, governance_*, owner_banks, vendor_*,
+//   marketplace_listings, organizations (snake_case dup), users (dup),
+//   audit_log (dup), user_roles, user_profiles, invites.
+// They can be added later via `prisma db pull` if Website-Beta absorbs
+// any of those features.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,155 +23,233 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums (matching live DB) ─────────────────────────────────────
+
 enum UserRole {
+  admin
+  facility_manager
+  building_manager
+  building_owner
+  property_manager
   resident
   tenant
   concierge
-  facility_manager
-  building_manager
-  platform_admin
+  staff
+  security
+  vendor
+  guest
+}
+
+enum BuildingType {
+  commercial
+  residential
+  mixed
+  industrial
 }
 
 enum WorkOrderStatus {
   open
-  assigned
   in_progress
+  scheduled
+  completed
   closed
 }
 
-enum PaymentStatus {
-  pending
-  succeeded
-  failed
-  refunded
+enum WorkOrderPriority {
+  urgent
+  high
+  normal
+  low
 }
 
-enum AuditAction {
-  create
-  update
-  delete
-  role_change
-  status_change
-  password_reset
-  login
-  signout
-  export
+enum SlaPolicy {
+  urgent_4h
+  high_24h
+  normal_72h
+  low_7d
 }
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum AmenityApprovalPolicy {
+  auto_approve
+  manager_approval
+}
+
+// ─── Models ───────────────────────────────────────────────────────
 
 // Mirror of Supabase auth.users keyed by the same uuid (auth.uid()).
-// Holds app-side role + building/unit assignments.
+// `password` is nullable since Supabase Auth owns credentials —
+// the column survives from the R&D legacy and may hold legacy hashes
+// for the seeded demo accounts.
 model User {
-  id         String    @id @db.Uuid
-  email      String    @unique
-  name       String?
-  phone      String?
-  role       UserRole  @default(resident)
-  buildingId String?
-  unitId     String?
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id              String    @id
+  email           String    @unique
+  name            String?
+  password        String?
+  role            UserRole
+  accessRoles     UserRole[]
+  company         String?
+  buildingId      String?
+  unitId          String?
+  unit            String?   // Free-form unit label (R&D legacy; prefer the FK)
+  avatar          String?
+  phone           String?
+  isActive        Boolean   @default(true)
+  isOrgAdmin      Boolean   @default(false)
+  isBillingOwner  Boolean   @default(false)
+  lastLoginAt     DateTime?
+  archivedAt      DateTime?
+  archiveReason   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  // Soft-delete: never DELETE rows (audit + LTB-evidence concerns).
-  // Set deletedAt instead and filter out at query time.
-  deletedAt  DateTime?
-
-  building          Building?        @relation(fields: [buildingId], references: [id], onDelete: SetNull)
-  unit              Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  building          Building?       @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  unitRel           Unit?           @relation(fields: [unitId], references: [id], onDelete: SetNull)
   leases            Lease[]
-  workOrdersOpened  WorkOrder[]      @relation("WorkOrderOpener")
-  workOrdersAssign  WorkOrder[]      @relation("WorkOrderAssignee")
-  announcementsBy   Announcement[]   @relation("AnnouncementAuthor")
-  payments          Payment[]
-  auditLogs         AuditLog[]       @relation("AuditActor")
+  workOrdersOpened  WorkOrder[]     @relation("WorkOrderOpener")
+  workOrdersAssign  WorkOrder[]     @relation("WorkOrderAssignee")
+  announcementsBy   Announcement[]  @relation("AnnouncementAuthor")
+  auditLogs         AuditLog[]      @relation("AuditActor")
 
   @@index([buildingId])
   @@index([role])
-  @@index([deletedAt])
+  @@index([unitId])
+  @@index([archivedAt])
 }
 
 model Building {
-  id        String   @id @default(cuid())
-  name      String
-  address   String
-  city      String
-  state     String
-  zipCode   String
-  timezone  String   @default("America/New_York")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String        @id
+  name           String
+  address        String
+  city           String
+  state          String
+  zipCode        String
+  country        String
+  latitude       Float?
+  longitude      Float?
+  type           BuildingType
+  totalUnits     Int?
+  totalArea      Float?
+  yearBuilt      Int?
+  description    String?
+  imageUrl       String?
+  amenities      String[]
+  timezone       String
+  isActive       Boolean       @default(true)
+  enabledModules Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   users         User[]
   units         Unit[]
   leases        Lease[]
   workOrders    WorkOrder[]
   announcements Announcement[]
+  auditLogs     AuditLog[]
 }
 
 model Unit {
-  id         String   @id @default(cuid())
-  buildingId String
-  unitNumber String
-  floor      Int?
-  rentAmount Decimal? @db.Decimal(10, 2)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id
+  buildingId      String
+  unitNumber      String
+  floor           Int?
+  wing            String?
+  unitType        String?
+  squareFeet      Float?
+  bedrooms        Int?
+  bathrooms       Float?
+  amenities       String[]
+  currentTenant   String?
+  occupancyStatus String   @default("vacant")
+  rentAmount      Float?
+  leaseEndDate    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  building   Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  users      User[]
-  leases     Lease[]
-  workOrders WorkOrder[]
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  users    User[]
+  leases   Lease[]
 
   @@unique([buildingId, unitNumber])
 }
 
 model Lease {
-  id         String    @id @default(cuid())
-  buildingId String
-  unitId     String
-  tenantId   String    @db.Uuid
-  startDate  DateTime
-  endDate    DateTime?
-  rentAmount Decimal   @db.Decimal(10, 2)
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
+  id                String    @id
+  buildingId        String
+  unitId            String
+  tenantId          String
+  leaseStartDate    DateTime
+  leaseEndDate      DateTime
+  rentAmountMonthly Float
+  securityDeposit   Float?
+  leaseType         String
+  status            String
+  notes             String?
+  archivedAt        DateTime?
+  archiveReason     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   unit     Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  tenant   User     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payments Payment[]
+  tenant   User     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@index([unitId])
 }
 
 model WorkOrder {
-  id           String          @id @default(cuid())
+  id           String            @id
   buildingId   String
-  unitId       String?
-  openedById   String          @db.Uuid
-  assignedToId String?         @db.Uuid
-  title        String
-  description  String
-  status       WorkOrderStatus @default(open)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  deletedAt    DateTime?
+  unit         String            // Free-form unit label (R&D legacy; not an FK)
+  issue        String            // Title / short description (legacy column name)
+  description  String?           // Long-form details (added by Website-Beta)
+  priority     WorkOrderPriority
+  status       WorkOrderStatus   @default(open)
+  openedById   String?           // Resident who submitted (added by Website-Beta)
+  assigneeId   String?           // Staff member working on it
+  vendorId     String?           // External vendor reference (R&D feature; not modeled here)
+  slaPolicy    SlaPolicy
+  slaDeadline  DateTime
+  submittedAt  DateTime
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  unit       Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  openedBy   User     @relation("WorkOrderOpener", fields: [openedById], references: [id])
-  assignedTo User?    @relation("WorkOrderAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  openedBy   User?    @relation("WorkOrderOpener",   fields: [openedById], references: [id], onDelete: SetNull)
+  assignee   User?    @relation("WorkOrderAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@index([buildingId, status])
-  @@index([assignedToId])
-  @@index([deletedAt])
+  @@index([assigneeId])
+  @@index([openedById])
 }
 
+model Payment {
+  id         String    @id
+  buildingId String?
+  userId     String?
+  amount     Float
+  currency   String    @default("USD")
+  status     String
+  method     String?
+  stripeId   String?
+  metadata   Json?
+  paidAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// CASL/PIPEDA-grade announcement broadcast. Soft-delete via deletedAt
+// so an audit trail is preserved.
 model Announcement {
   id         String   @id @default(cuid())
   buildingId String
-  authorId   String   @db.Uuid
+  authorId   String
   title      String
   body       String
   createdAt  DateTime @default(now())
@@ -166,50 +258,33 @@ model Announcement {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   author   User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
 
-  @@index([buildingId, createdAt])
+  @@index([buildingId, createdAt(sort: Desc)])
   @@index([deletedAt])
 }
 
-// Append-only audit trail. Every privileged write should call logAudit()
-// in lib/audit.ts. Don't ever UPDATE or DELETE these rows — they're
-// evidence-grade, including for LTB landlord-tenant disputes where
-// timestamps and authorship matter.
+// Append-only audit trail. Matches the live DB shape (userId/resource/
+// resourceId/changes/status). Don't UPDATE or DELETE these rows —
+// they're evidence-grade for LTB landlord-tenant disputes.
 model AuditLog {
-  id         String      @id @default(cuid())
-  actorId    String?     @db.Uuid
-  action     AuditAction
-  entityType String
-  entityId   String
-  buildingId String?
-  before     Json?
-  after      Json?
-  metadata   Json?
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime    @default(now())
+  id           String   @id
+  userId       String?
+  userEmail    String?
+  buildingId   String?
+  action       String
+  resource     String
+  resourceId   String?
+  changes      Json?
+  ipAddress    String?
+  userAgent    String?
+  status       String
+  errorMessage String?
+  createdAt    DateTime @default(now())
 
-  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor    User?     @relation("AuditActor",   fields: [userId],     references: [id], onDelete: SetNull)
+  building Building? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
 
-  @@index([entityType, entityId])
-  @@index([actorId, createdAt])
+  @@index([resource, resourceId])
+  @@index([userId, createdAt])
   @@index([buildingId, createdAt])
   @@index([createdAt])
-}
-
-model Payment {
-  id                    String        @id @default(cuid())
-  leaseId               String
-  payerId               String        @db.Uuid
-  amount                Decimal       @db.Decimal(10, 2)
-  currency              String        @default("usd")
-  status                PaymentStatus @default(pending)
-  stripeCheckoutId      String?       @unique
-  stripePaymentIntentId String?       @unique
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-
-  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
-  payer User  @relation(fields: [payerId], references: [id])
-
-  @@index([leaseId, status])
 }

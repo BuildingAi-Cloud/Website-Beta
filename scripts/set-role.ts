@@ -7,7 +7,7 @@ loadEnv({ path: ".env.local" });
 import { PrismaClient, type UserRole } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const VALID_ROLES: UserRole[] = ["resident", "tenant", "concierge", "facility_manager", "building_manager", "platform_admin"];
+const VALID_ROLES: UserRole[] = ["resident", "tenant", "concierge", "facility_manager", "building_manager", "admin"];
 
 async function main() {
   const [email, role] = process.argv.slice(2);
@@ -31,7 +31,7 @@ async function main() {
     process.exit(1);
   }
   // Staff and platform admins aren't tied to a specific unit.
-  const NON_RESIDENT: UserRole[] = ["building_manager", "facility_manager", "concierge", "platform_admin"];
+  const NON_RESIDENT: UserRole[] = ["building_manager", "facility_manager", "concierge", "admin"];
   const clearUnit = NON_RESIDENT.includes(role as UserRole);
 
   const updated = await prisma.user.update({

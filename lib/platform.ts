@@ -20,7 +20,7 @@ export async function requirePlatformAdmin() {
   }
 
   const session = await requireUser();
-  if (session.appUser.role !== "platform_admin") {
+  if (session.appUser.role !== "admin") {
     redirect("/");
   }
   return session;

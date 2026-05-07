@@ -4,10 +4,13 @@ import { prisma } from "@/lib/prisma";
 
 const STATUS_TONE: Record<string, string> = {
   open: "bg-accent/10 text-accent border-accent/30",
-  assigned: "bg-muted text-muted-foreground border-border",
   in_progress: "bg-foreground/5 text-foreground border-border",
+  scheduled: "bg-muted text-muted-foreground border-border",
+  completed: "bg-muted/50 text-muted-foreground border-border",
   closed: "bg-muted/50 text-muted-foreground border-border line-through",
 };
+
+const ACTIVE_STATUSES = ["open", "in_progress", "scheduled"] as const;
 
 export default async function TeamHome() {
   const { appUser } = await requireTeam();
@@ -15,16 +18,15 @@ export default async function TeamHome() {
   const [building, openCount, residentCount, announcementCount, recentWorkOrders] = appUser.buildingId
     ? await Promise.all([
         prisma.building.findUnique({ where: { id: appUser.buildingId } }),
-        prisma.workOrder.count({ where: { buildingId: appUser.buildingId, status: { in: ["open", "assigned", "in_progress"] } } }),
+        prisma.workOrder.count({ where: { buildingId: appUser.buildingId, status: { in: [...ACTIVE_STATUSES] } } }),
         prisma.user.count({ where: { buildingId: appUser.buildingId, role: { in: ["resident", "tenant"] } } }),
-        prisma.announcement.count({ where: { buildingId: appUser.buildingId } }),
+        prisma.announcement.count({ where: { buildingId: appUser.buildingId, deletedAt: null } }),
         prisma.workOrder.findMany({
-          where: { buildingId: appUser.buildingId, status: { in: ["open", "assigned", "in_progress"] } },
+          where: { buildingId: appUser.buildingId, status: { in: [...ACTIVE_STATUSES] } },
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
           take: 4,
           include: {
             openedBy: { select: { name: true, email: true } },
-            unit: { select: { unitNumber: true } },
           },
         }),
       ])
@@ -75,13 +77,13 @@ export default async function TeamHome() {
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium truncate">{wo.title}</span>
+                      <span className="font-medium truncate">{wo.issue}</span>
                       {wo.unit && (
-                        <span className="text-xs text-muted-foreground">Unit {wo.unit.unitNumber}</span>
+                        <span className="text-xs text-muted-foreground">Unit {wo.unit}</span>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground/70 mt-1">
-                      Opened by {wo.openedBy.name || wo.openedBy.email} · {new Date(wo.createdAt).toLocaleDateString()}
+                      Opened by {wo.openedBy ? (wo.openedBy.name || wo.openedBy.email) : "—"} · {new Date(wo.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border shrink-0 ${STATUS_TONE[wo.status]}`}>

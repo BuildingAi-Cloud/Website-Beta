@@ -14,12 +14,12 @@ const Body = z.object({
     "concierge",
     "facility_manager",
     "building_manager",
-    "platform_admin",
+    "admin",
   ]),
   buildingId: z.string().min(1).nullable(),
 });
 
-const NON_RESIDENT = ["building_manager", "facility_manager", "concierge", "platform_admin"];
+const NON_RESIDENT = ["building_manager", "facility_manager", "concierge", "admin"];
 
 export async function updateUser(formData: FormData) {
   const session = await requirePlatformAdmin();
@@ -51,13 +51,16 @@ export async function updateUser(formData: FormData) {
   });
 
   logAuditFireAndForget({
-    actorId: session.appUser.id,
-    action: before && before.role !== role ? "role_change" : "update",
-    entityType: "User",
-    entityId: userId,
+    userId: session.appUser.id,
+    userEmail: session.appUser.email,
+    action: before && before.role !== role ? "user.role_change" : "user.update",
+    resource: "User",
+    resourceId: userId,
     buildingId: buildingId,
-    before: before ?? undefined,
-    after: { role, buildingId, unitId: NON_RESIDENT.includes(role) ? null : before?.unitId },
+    changes: {
+      before,
+      after: { role, buildingId, unitId: NON_RESIDENT.includes(role) ? null : before?.unitId },
+    },
   });
 
   revalidatePath("/platform/users");

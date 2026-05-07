@@ -71,14 +71,13 @@ export async function addResident(_prev: unknown, formData: FormData): Promise<R
       },
     });
     logAuditFireAndForget({
-      actorId: session.appUser.id,
-      action: "update",
-      entityType: "User",
-      entityId: existing.id,
+      userId: session.appUser.id,
+      userEmail: session.appUser.email,
+      action: "user.relink",
+      resource: "User",
+      resourceId: existing.id,
       buildingId: session.appUser.buildingId,
-      before,
-      after: { role, buildingId: session.appUser.buildingId, unitId },
-      metadata: { reason: "relink_existing" },
+      changes: { before, after: { role, buildingId: session.appUser.buildingId, unitId } },
     });
     revalidatePath("/team/residents");
     return { ok: true, email, password: null, message: `Re-linked existing account.` };
@@ -108,12 +107,13 @@ export async function addResident(_prev: unknown, formData: FormData): Promise<R
   });
 
   logAuditFireAndForget({
-    actorId: session.appUser.id,
-    action: "create",
-    entityType: "User",
-    entityId: data.user.id,
+    userId: session.appUser.id,
+    userEmail: session.appUser.email,
+    action: "user.create",
+    resource: "User",
+    resourceId: data.user.id,
     buildingId: session.appUser.buildingId,
-    after: { email, role, buildingId: session.appUser.buildingId, unitId },
+    changes: { email, role, buildingId: session.appUser.buildingId, unitId },
   });
 
   // Welcome email with temp password + sign-in link. Awaited so a delivery
@@ -223,14 +223,13 @@ export async function bulkAddResidents(_prev: unknown, formData: FormData): Prom
       const before = { role: existing.role, buildingId: existing.buildingId, unitId: existing.unitId };
       await prisma.user.update({ where: { id: existing.id }, data: linkData });
       logAuditFireAndForget({
-        actorId: session.appUser.id,
-        action: "update",
-        entityType: "User",
-        entityId: existing.id,
+        userId: session.appUser.id,
+        userEmail: session.appUser.email,
+        action: "user.bulk_relink",
+        resource: "User",
+        resourceId: existing.id,
         buildingId: session.appUser.buildingId,
-        before,
-        after: linkData,
-        metadata: { reason: "bulk_relink", row: rowNum },
+        changes: { before, after: linkData, row: rowNum },
       });
       rows.push({ row: rowNum, email, password: null, status: "linked" });
       linked++;
@@ -251,13 +250,13 @@ export async function bulkAddResidents(_prev: unknown, formData: FormData): Prom
       data: { id: data.user.id, email, ...linkData },
     });
     logAuditFireAndForget({
-      actorId: session.appUser.id,
-      action: "create",
-      entityType: "User",
-      entityId: data.user.id,
+      userId: session.appUser.id,
+      userEmail: session.appUser.email,
+      action: "user.bulk_create",
+      resource: "User",
+      resourceId: data.user.id,
       buildingId: session.appUser.buildingId,
-      after: { email, ...linkData },
-      metadata: { reason: "bulk_create", row: rowNum },
+      changes: { email, ...linkData, row: rowNum },
     });
     // Fire welcome email; don't fail the row if it errors (BM still sees the temp password in the response).
     sendEmail({

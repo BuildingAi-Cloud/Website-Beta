@@ -1,32 +1,23 @@
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-type AuditAction =
-  | "create"
-  | "update"
-  | "delete"
-  | "role_change"
-  | "status_change"
-  | "password_reset"
-  | "login"
-  | "signout"
-  | "export";
-
 interface LogAuditArgs {
-  actorId: string | null;
-  action: AuditAction;
-  entityType: "User" | "WorkOrder" | "Announcement" | "Building" | "Unit" | "Lease" | "Payment" | string;
-  entityId: string;
+  userId: string | null;
+  userEmail?: string | null;
+  action: string; // free-form verb: "create", "role_change", "status_change", "password_reset", etc.
+  resource: "User" | "WorkOrder" | "Announcement" | "Building" | "Unit" | "Lease" | "Payment" | string;
+  resourceId?: string | null;
   buildingId?: string | null;
-  before?: Record<string, unknown> | null;
-  after?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
+  changes?: Record<string, unknown> | null;
+  status?: "success" | "error";
+  errorMessage?: string | null;
 }
 
-// Append-only audit trail. Calls are fire-and-forget — a failed audit
-// write must never block the user-facing action. We log to console as
-// a fallback so the event isn't lost entirely.
+// Append-only audit trail. Matches the live DB AuditLog shape (userId/
+// resource/resourceId/changes/status). Calls are fire-and-forget —
+// a failed audit write must never block the user-facing action.
 export async function logAudit(args: LogAuditArgs): Promise<void> {
   try {
     const reqHeaders = await headers().catch(() => null);
@@ -38,22 +29,25 @@ export async function logAudit(args: LogAuditArgs): Promise<void> {
 
     await prisma.auditLog.create({
       data: {
-        actorId: args.actorId,
-        action: args.action,
-        entityType: args.entityType,
-        entityId: args.entityId,
+        id: randomUUID(),
+        userId: args.userId,
+        userEmail: args.userEmail ?? null,
         buildingId: args.buildingId ?? null,
-        before: args.before === undefined ? Prisma.DbNull : (args.before as Prisma.InputJsonValue),
-        after: args.after === undefined ? Prisma.DbNull : (args.after as Prisma.InputJsonValue),
-        metadata: args.metadata === undefined ? Prisma.DbNull : (args.metadata as Prisma.InputJsonValue),
+        action: args.action,
+        resource: args.resource,
+        resourceId: args.resourceId ?? null,
+        changes:
+          args.changes === undefined || args.changes === null
+            ? Prisma.DbNull
+            : (args.changes as Prisma.InputJsonValue),
         ipAddress,
         userAgent,
+        status: args.status ?? "success",
+        errorMessage: args.errorMessage ?? null,
       },
     });
   } catch (err) {
-    // Don't crash the calling action if the audit write fails — the
-    // most likely cause is the AuditLog table not yet existing on a
-    // freshly-deployed environment that hasn't run the migration.
+    // Don't crash the calling action if the audit write fails.
     console.error("[audit] failed to record event", { args, err });
   }
 }

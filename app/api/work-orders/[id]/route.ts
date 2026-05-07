@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { sendEmailFireAndForget, workOrderStatusChangedEmail } from "@/lib/email";
 import { logAuditFireAndForget } from "@/lib/audit";
 
+// Live-DB enum: open → in_progress → scheduled → completed → closed.
+// We only expose the linear flow (open → in_progress → closed) for R1.
 const PatchBody = z.object({
-  status: z.enum(["open", "assigned", "in_progress", "closed"]).optional(),
+  status: z.enum(["open", "in_progress", "scheduled", "completed", "closed"]).optional(),
   assignSelf: z.boolean().optional(),
 });
 
@@ -29,24 +31,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const data: { status?: typeof parsed.data.status; assignedToId?: string } = {};
+  const data: { status?: typeof parsed.data.status; assigneeId?: string } = {};
   if (parsed.data.status) data.status = parsed.data.status;
-  if (parsed.data.assignSelf) data.assignedToId = appUser.id;
+  if (parsed.data.assignSelf) data.assigneeId = appUser.id;
 
   const updated = await prisma.workOrder.update({ where: { id }, data });
 
   logAuditFireAndForget({
-    actorId: appUser.id,
-    action: data.status && data.status !== wo.status ? "status_change" : "update",
-    entityType: "WorkOrder",
-    entityId: id,
+    userId: appUser.id,
+    userEmail: appUser.email,
+    action: data.status && data.status !== wo.status ? "workorder.status_change" : "workorder.update",
+    resource: "WorkOrder",
+    resourceId: id,
     buildingId: wo.buildingId,
-    before: { status: wo.status, assignedToId: wo.assignedToId },
-    after: { status: updated.status, assignedToId: updated.assignedToId },
+    changes: {
+      before: { status: wo.status, assigneeId: wo.assigneeId },
+      after: { status: updated.status, assigneeId: updated.assigneeId },
+    },
   });
 
   // Email the opener if status actually changed.
-  if (data.status && data.status !== wo.status) {
+  if (data.status && data.status !== wo.status && wo.openedById) {
     const [opener, building] = await Promise.all([
       prisma.user.findUnique({ where: { id: wo.openedById }, select: { email: true, isActive: true } }),
       prisma.building.findUnique({ where: { id: wo.buildingId }, select: { name: true } }),
@@ -55,7 +60,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       sendEmailFireAndForget({
         to: opener.email,
         ...workOrderStatusChangedEmail({
-          title: updated.title,
+          title: updated.issue,
           oldStatus: wo.status,
           newStatus: data.status,
           buildingName: building?.name ?? null,

@@ -11,43 +11,47 @@ export default async function BuildingDetail({ params }: { params: Promise<{ id:
   await requirePlatformAdmin();
   const { id } = await params;
 
-  const building = await prisma.building.findUnique({
-    where: { id },
-    include: {
-      _count: { select: { users: true, units: true, workOrders: true, announcements: true } },
-      users: {
-        orderBy: [{ role: "asc" }, { email: "asc" }],
-        include: { unit: { select: { unitNumber: true } } },
-      },
-      units: {
-        orderBy: [{ floor: "asc" }, { unitNumber: "asc" }],
-        include: { _count: { select: { users: true } } },
-      },
-    },
-  });
-
+  // Fetch the building, then load related collections in parallel — the
+  // schema doesn't support _count + nested includes the way the original
+  // single-query approach assumed.
+  const building = await prisma.building.findUnique({ where: { id } });
   if (!building) notFound();
 
-  const staff = building.users.filter((u) => STAFF_ROLES.includes(u.role));
-  const residents = building.users.filter((u) => RESIDENT_ROLES.includes(u.role));
+  const [users, units, workOrderCount, announcementCount] = await Promise.all([
+    prisma.user.findMany({
+      where: { buildingId: id, archivedAt: null },
+      orderBy: [{ role: "asc" }, { email: "asc" }],
+      include: { unitRel: { select: { unitNumber: true } } },
+    }),
+    prisma.unit.findMany({
+      where: { buildingId: id },
+      orderBy: [{ floor: "asc" }, { unitNumber: "asc" }],
+      include: { _count: { select: { users: true } } },
+    }),
+    prisma.workOrder.count({ where: { buildingId: id } }),
+    prisma.announcement.count({ where: { buildingId: id, deletedAt: null } }),
+  ]);
+
+  const staff = users.filter((u) => STAFF_ROLES.includes(u.role));
+  const residents = users.filter((u) => RESIDENT_ROLES.includes(u.role));
 
   return (
-    <main className="px-6 py-10 max-w-6xl mx-auto">
+    <main className="px-4 md:px-6 py-8 md:py-10 max-w-6xl mx-auto">
       <Link href="/platform" className="text-sm text-muted-foreground hover:text-foreground">← Back to platform</Link>
 
       <div className="mt-4 space-y-1">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Building</p>
-        <h1 className="text-4xl font-semibold tracking-tight">{building.name}</h1>
+        <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{building.name}</h1>
         <p className="text-sm text-muted-foreground">
           {building.address}, {building.city}, {building.state} {building.zipCode} · {building.timezone}
         </p>
       </div>
 
-      <div className="mt-10 grid sm:grid-cols-4 gap-3">
-        <Stat label="Units" value={building._count.units} />
-        <Stat label="Users" value={building._count.users} />
-        <Stat label="Work orders" value={building._count.workOrders} />
-        <Stat label="Announcements" value={building._count.announcements} />
+      <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Stat label="Units" value={units.length} />
+        <Stat label="Users" value={users.length} />
+        <Stat label="Work orders" value={workOrderCount} />
+        <Stat label="Announcements" value={announcementCount} />
       </div>
 
       <Section title="Team" empty="No staff assigned to this building yet.">
@@ -71,7 +75,7 @@ export default async function BuildingDetail({ params }: { params: Promise<{ id:
       </Section>
 
       <Section title="Units" empty="No units yet — Building Manager can add them at /team/units.">
-        {building.units.length > 0 && (
+        {units.length > 0 && (
           <table className="w-full text-sm">
             <thead className="text-xs uppercase tracking-wider text-muted-foreground">
               <tr className="border-b border-border">
@@ -82,7 +86,7 @@ export default async function BuildingDetail({ params }: { params: Promise<{ id:
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {building.units.map((u) => (
+              {units.map((u) => (
                 <tr key={u.id}>
                   <td className="py-3 px-5 font-medium">Unit {u.unitNumber}</td>
                   <td className="py-3 px-5 text-muted-foreground">{u.floor ?? "—"}</td>
@@ -107,7 +111,7 @@ export default async function BuildingDetail({ params }: { params: Promise<{ id:
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="block p-5 bg-card border border-border rounded-md">
-      <div className="text-4xl font-semibold tabular-nums">{value}</div>
+      <div className="text-3xl md:text-4xl font-semibold tabular-nums">{value}</div>
       <div className="text-sm text-muted-foreground mt-1">{label}</div>
     </div>
   );
@@ -132,7 +136,19 @@ function Section({
   );
 }
 
-function UserRow({ user }: { user: { id: string; email: string; name: string | null; role: UserRole; unit: { unitNumber: string } | null } }) {
+function UserRow({
+  user,
+}: {
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    role: UserRole;
+    unit: string | null;
+    unitRel: { unitNumber: string } | null;
+  };
+}) {
+  const unitLabel = user.unitRel?.unitNumber || user.unit;
   return (
     <li className="px-5 py-4 flex items-center justify-between gap-4">
       <div className="min-w-0">
@@ -140,7 +156,7 @@ function UserRow({ user }: { user: { id: string; email: string; name: string | n
         <div className="text-xs text-muted-foreground truncate">{user.email}</div>
       </div>
       <div className="text-sm flex items-center gap-3 shrink-0">
-        {user.unit && <span className="text-muted-foreground">Unit {user.unit.unitNumber}</span>}
+        {unitLabel && <span className="text-muted-foreground">Unit {unitLabel}</span>}
         <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border border-border bg-muted/30">
           {user.role.replace("_", " ")}
         </span>

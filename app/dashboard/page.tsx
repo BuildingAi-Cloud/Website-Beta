@@ -32,7 +32,7 @@ export default async function DashboardPage() {
       where: { openedById: appUser.id },
       orderBy: { createdAt: "desc" },
       take: 3,
-      select: { id: true, title: true, status: true, createdAt: true },
+      select: { id: true, issue: true, status: true, createdAt: true },
     }),
     appUser.buildingId
       ? prisma.announcement.findMany({
@@ -148,7 +148,7 @@ export default async function DashboardPage() {
               {recentWorkOrders.map((wo) => (
                 <li key={wo.id} className="bg-card border border-border rounded-md px-4 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{wo.title}</div>
+                    <div className="font-medium truncate">{wo.issue}</div>
                     <div className="text-xs text-muted-foreground/70 mt-0.5">
                       {new Date(wo.createdAt).toLocaleDateString()}
                     </div>

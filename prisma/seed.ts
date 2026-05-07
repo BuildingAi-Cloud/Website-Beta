@@ -18,13 +18,16 @@ async function main() {
       city: "Toronto",
       state: "ON",
       zipCode: "M5V 1A1",
+      country: "Canada",
+      type: "residential",
+      timezone: "America/Toronto",
     },
   });
 
   const unit = await prisma.unit.upsert({
     where: { buildingId_unitNumber: { buildingId: building.id, unitNumber: "101" } },
     update: {},
-    create: { buildingId: building.id, unitNumber: "101", floor: 1, rentAmount: "1500.00" },
+    create: { id: "demo-unit-101", buildingId: building.id, unitNumber: "101", floor: 1, rentAmount: 1500 },
   });
 
   console.log(`Seeded: ${building.name} · Unit ${unit.unitNumber} (${unit.id})`);

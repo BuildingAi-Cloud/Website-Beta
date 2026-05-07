@@ -19,8 +19,7 @@ export default async function TeamWorkOrdersPage() {
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
       openedBy: { select: { email: true, name: true } },
-      unit: { select: { unitNumber: true } },
-      assignedTo: { select: { email: true, name: true } },
+      assignee: { select: { email: true, name: true } },
     },
     take: 100,
   });
@@ -50,13 +49,13 @@ export default async function TeamWorkOrdersPage() {
               key={wo.id}
               workOrder={{
                 id: wo.id,
-                title: wo.title,
+                title: wo.issue,
                 description: wo.description,
                 status: wo.status,
                 createdAt: wo.createdAt.toISOString(),
-                openedByLabel: wo.openedBy.name || wo.openedBy.email,
-                unitLabel: wo.unit?.unitNumber || null,
-                assignedToLabel: wo.assignedTo ? wo.assignedTo.name || wo.assignedTo.email : null,
+                openedByLabel: wo.openedBy ? (wo.openedBy.name || wo.openedBy.email) : "—",
+                unitLabel: wo.unit || null,
+                assignedToLabel: wo.assignee ? (wo.assignee.name || wo.assignee.email) : null,
               }}
               canAct={canAct}
             />

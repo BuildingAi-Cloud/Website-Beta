@@ -41,7 +41,7 @@ export default async function Home({ searchParams }: { searchParams: SP }) {
     const appUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (appUser) {
       switch (appUser.role) {
-        case "platform_admin":
+        case "admin":
           portalUrl =
             isAdminHost || process.env.NODE_ENV !== "production"
               ? "/platform"

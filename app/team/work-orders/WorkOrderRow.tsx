@@ -4,12 +4,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
+type Status = "open" | "in_progress" | "scheduled" | "completed" | "closed";
+
 type Props = {
   workOrder: {
     id: string;
     title: string;
-    description: string;
-    status: "open" | "assigned" | "in_progress" | "closed";
+    description: string | null;
+    status: Status;
     createdAt: string;
     openedByLabel: string;
     unitLabel: string | null;
@@ -18,23 +20,29 @@ type Props = {
   canAct: boolean;
 };
 
-const NEXT_STATUS: Record<Props["workOrder"]["status"], Props["workOrder"]["status"] | null> = {
-  open: "assigned",
-  assigned: "in_progress",
+// Linear lifecycle for R1: open → in_progress (= "I've taken it on") →
+// closed. The DB enum has scheduled + completed too, but we don't expose
+// those buttons; manual SQL or a future UI can drive them.
+const NEXT_STATUS: Record<Status, Status | null> = {
+  open: "in_progress",
   in_progress: "closed",
+  scheduled: "in_progress",
+  completed: "closed",
   closed: null,
 };
 
 const NEXT_LABEL: Record<string, string> = {
-  open: "Assign to me",
-  assigned: "Start work",
+  open: "Take on",
   in_progress: "Mark closed",
+  scheduled: "Start work",
+  completed: "Close",
 };
 
 const STATUS_TONE: Record<string, string> = {
   open: "bg-accent/10 text-accent border-accent/30",
-  assigned: "bg-muted text-muted-foreground border-border",
   in_progress: "bg-foreground/5 text-foreground border-border",
+  scheduled: "bg-muted text-muted-foreground border-border",
+  completed: "bg-muted/50 text-muted-foreground border-border",
   closed: "bg-muted/50 text-muted-foreground border-border line-through",
 };
 
@@ -45,7 +53,8 @@ export function WorkOrderRow({ workOrder, canAct }: Props) {
   const [expanded, setExpanded] = useState(false);
   const next = NEXT_STATUS[workOrder.status];
   const showAction = canAct && next;
-  const isLong = workOrder.description.length > 180;
+  const description = workOrder.description ?? "";
+  const isLong = description.length > 180;
 
   async function advance() {
     if (!next) return;
@@ -82,13 +91,15 @@ export function WorkOrderRow({ workOrder, canAct }: Props) {
               <span className="text-xs text-muted-foreground">Unit {workOrder.unitLabel}</span>
             )}
           </div>
-          <p
-            className={`mt-2 text-sm text-muted-foreground whitespace-pre-wrap ${
-              !expanded && isLong ? "line-clamp-3" : ""
-            }`}
-          >
-            {workOrder.description}
-          </p>
+          {description && (
+            <p
+              className={`mt-2 text-sm text-muted-foreground whitespace-pre-wrap ${
+                !expanded && isLong ? "line-clamp-3" : ""
+              }`}
+            >
+              {description}
+            </p>
+          )}
           {isLong && (
             <button
               type="button"

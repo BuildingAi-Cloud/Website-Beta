@@ -23,7 +23,7 @@ export default async function TeamResidentsPage() {
         buildingId: appUser.buildingId,
         role: { in: ["resident", "tenant"] },
       },
-      include: { unit: { select: { unitNumber: true } } },
+      include: { unitRel: { select: { unitNumber: true } } },
       orderBy: [{ role: "asc" }, { email: "asc" }],
     }),
     CAN_ADD.includes(appUser.role)
@@ -72,7 +72,11 @@ export default async function TeamResidentsPage() {
                     <div className="text-xs text-muted-foreground truncate">{r.email}</div>
                   </div>
                   <div className="text-sm flex items-center gap-3 shrink-0">
-                    {r.unit && <span className="text-muted-foreground">Unit {r.unit.unitNumber}</span>}
+                    {(r.unitRel || r.unit) && (
+                      <span className="text-muted-foreground">
+                        Unit {r.unitRel?.unitNumber || r.unit}
+                      </span>
+                    )}
                     <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border border-border bg-muted/30">
                       {r.role}
                     </span>

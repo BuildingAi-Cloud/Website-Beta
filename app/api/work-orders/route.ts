@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getOrCreateAppUser } from "@/lib/auth";
@@ -8,6 +9,14 @@ const CreateBody = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(2000),
 });
+
+// Default SLA for resident-submitted requests is 72h (normal). BM/FM
+// can re-prioritize from /team/work-orders later.
+const DEFAULT_PRIORITY = "normal" as const;
+const DEFAULT_SLA = "normal_72h" as const;
+const SLA_HOURS: Record<typeof DEFAULT_SLA, number> = {
+  normal_72h: 72,
+};
 
 export async function GET() {
   const session = await getOrCreateAppUser();
@@ -38,19 +47,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_body", issues: parsed.error.issues }, { status: 400 });
   }
 
+  // Resolve unit text label — fall back to "—" if neither relation nor
+  // legacy text label is set. The DB column is NOT NULL so we have to
+  // give it something.
+  const unitRow = appUser.unitId
+    ? await prisma.unit.findUnique({ where: { id: appUser.unitId }, select: { unitNumber: true } })
+    : null;
+  const unitLabel = unitRow?.unitNumber || appUser.unit || "—";
+
+  const submittedAt = new Date();
+  const slaDeadline = new Date(submittedAt.getTime() + SLA_HOURS[DEFAULT_SLA] * 60 * 60 * 1000);
+
   const workOrder = await prisma.workOrder.create({
     data: {
+      id: randomUUID(),
       buildingId: appUser.buildingId,
-      unitId: appUser.unitId,
+      unit: unitLabel,
       openedById: appUser.id,
-      title: parsed.data.title,
+      issue: parsed.data.title,
       description: parsed.data.description,
+      priority: DEFAULT_PRIORITY,
+      slaPolicy: DEFAULT_SLA,
+      slaDeadline,
+      submittedAt,
     },
   });
 
   // Notify FMs (and BMs as fallback) in this building. Fire-and-forget so
   // a slow Resend call never blocks the resident's submit.
-  const [recipients, building, unit] = await Promise.all([
+  const [recipients, building] = await Promise.all([
     prisma.user.findMany({
       where: {
         buildingId: appUser.buildingId,
@@ -60,16 +85,15 @@ export async function POST(request: NextRequest) {
       select: { email: true },
     }),
     prisma.building.findUnique({ where: { id: appUser.buildingId }, select: { name: true } }),
-    appUser.unitId ? prisma.unit.findUnique({ where: { id: appUser.unitId }, select: { unitNumber: true } }) : Promise.resolve(null),
   ]);
   if (recipients.length > 0) {
     sendEmailFireAndForget({
       to: recipients.map((r) => r.email),
       ...workOrderCreatedEmail({
-        title: workOrder.title,
-        description: workOrder.description,
+        title: workOrder.issue,
+        description: workOrder.description ?? "",
         openedByLabel: appUser.name || appUser.email,
-        unitLabel: unit?.unitNumber ?? null,
+        unitLabel: workOrder.unit === "—" ? null : workOrder.unit,
         buildingName: building?.name ?? null,
         workOrderId: workOrder.id,
       }),
