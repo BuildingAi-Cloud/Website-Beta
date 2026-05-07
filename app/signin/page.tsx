@@ -29,7 +29,7 @@ export default function SignInPage() {
       }
       return;
     }
-    router.push("/");
+    router.push("/?go=1");
     router.refresh();
   }
 

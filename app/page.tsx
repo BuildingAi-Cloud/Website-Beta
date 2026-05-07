@@ -6,7 +6,9 @@ import { LinkButton, Wordmark } from "@/components/ui";
 
 const ADMIN_HOST = process.env.ADMIN_HOST || "admin.buildingsync.app";
 
-export default async function Home() {
+type SP = Promise<{ go?: string }>;
+
+export default async function Home({ searchParams }: { searchParams: SP }) {
   const h = await headers();
   const host = h.get("host") || "";
   const isAdminHost = host === ADMIN_HOST || host.startsWith("admin.");
@@ -14,23 +16,35 @@ export default async function Home() {
   const supabase = createClient(await cookies());
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Resolve the user's portal target so the landing CTA can either link
+  // them in (authed) or invite sign-in (anonymous). The redirect only
+  // fires when arriving via /?go=1 (set by /signin) — otherwise we let
+  // signed-in visitors browse the public www landing freely.
+  const params = await searchParams;
+  let portalUrl: string | null = null;
+  let portalLabel = "Continue";
   if (user) {
     const appUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (appUser) {
       switch (appUser.role) {
         case "platform_admin":
-          redirect(
+          portalUrl =
             isAdminHost || process.env.NODE_ENV !== "production"
               ? "/platform"
-              : `https://${ADMIN_HOST}/platform`,
-          );
+              : `https://${ADMIN_HOST}/platform`;
+          portalLabel = "Open admin";
+          break;
         case "building_manager":
         case "facility_manager":
         case "concierge":
-          redirect("/team");
+          portalUrl = "/team";
+          portalLabel = "Open team";
+          break;
         default:
-          redirect("/dashboard");
+          portalUrl = "/dashboard";
+          portalLabel = "Open dashboard";
       }
+      if (params.go === "1") redirect(portalUrl);
     }
   }
 
@@ -45,8 +59,14 @@ export default async function Home() {
           Maintenance, announcements, and payments for residents, tenants, and the team that keeps the lights on.
         </p>
         <div className="flex gap-3 justify-center pt-2">
-          <LinkButton href="/signin">Sign in</LinkButton>
-          <LinkButton href="/signup" variant="outline">Sign up</LinkButton>
+          {portalUrl ? (
+            <LinkButton href={portalUrl}>{portalLabel}</LinkButton>
+          ) : (
+            <>
+              <LinkButton href="/signin">Sign in</LinkButton>
+              <LinkButton href="/signup" variant="outline">Sign up</LinkButton>
+            </>
+          )}
         </div>
         <p className="text-xs text-muted-foreground/70 pt-8">R1 · {process.env.NODE_ENV}</p>
       </div>
