@@ -1,90 +1,315 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
+import type React from "react"
+import { motion } from "framer-motion"
+import { useMemo, useState, useCallback, useEffect, useRef, createContext, useContext } from "react"
+import { Volume2, VolumeX } from "lucide-react"
 
-// Solari/split-flap display — letters cycle through random characters then
-// settle on the target. Done with pure React + CSS, no animation library.
-// During scramble each tile shows the accent color; on settle it flips to
-// foreground/background. No audio for now (R1 keeps the dep tree lean).
-
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const FRAMES_PER_LETTER = 14;
-const FRAME_MS = 55;
-const STAGGER_MS = 75;
-
-function pickRandom() {
-  return CHARS[Math.floor(Math.random() * CHARS.length)];
+interface AudioContextType {
+  isMuted: boolean
+  toggleMute: () => void
+  playClick: () => void
 }
 
-export function SplitFlapText({ text, className = "" }: { text: string; className?: string }) {
-  const target = text.toUpperCase();
-  const [frames, setFrames] = useState<string[]>(() => target.split("").map(() => pickRandom()));
-  const [done, setDone] = useState<boolean[]>(() => target.split("").map(() => false));
+const SplitFlapAudioContext = createContext<AudioContextType | null>(null)
+
+function useSplitFlapAudio() {
+  return useContext(SplitFlapAudioContext)
+}
+
+export function SplitFlapAudioProvider({ children }: { children: React.ReactNode }) {
+  const [isMuted, setIsMuted] = useState(true)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  type WindowWithWebkitAudio = Window & {
+    AudioContext?: typeof AudioContext
+    webkitAudioContext?: typeof AudioContext
+  }
+
+  const getAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null
+    if (!audioContextRef.current) {
+      const windowWithWebkitAudio = window as WindowWithWebkitAudio
+      const AudioContextClass = windowWithWebkitAudio.AudioContext || windowWithWebkitAudio.webkitAudioContext
+      if (AudioContextClass) {
+        audioContextRef.current = new AudioContextClass()
+      }
+    }
+    return audioContextRef.current
+  }, [])
+
+  const triggerHaptic = useCallback(() => {
+    if (isMuted) return
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(10)
+    }
+  }, [isMuted])
+
+  const playClick = useCallback(() => {
+    if (isMuted) return
+
+    triggerHaptic()
+
+    try {
+      const ctx = getAudioContext()
+      if (!ctx) return
+
+      if (ctx.state === "suspended") {
+        ctx.resume()
+      }
+
+      const oscillator = ctx.createOscillator()
+      const gainNode = ctx.createGain()
+      const filter = ctx.createBiquadFilter()
+      const lowpass = ctx.createBiquadFilter()
+
+      oscillator.type = "square"
+      oscillator.frequency.setValueAtTime(800 + Math.random() * 400, ctx.currentTime)
+      oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.015)
+
+      filter.type = "bandpass"
+      filter.frequency.setValueAtTime(1200, ctx.currentTime)
+      filter.Q.setValueAtTime(0.8, ctx.currentTime)
+
+      lowpass.type = "lowpass"
+      lowpass.frequency.value = 2500
+      lowpass.Q.value = 0.5
+
+      gainNode.gain.setValueAtTime(0.05, ctx.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02)
+
+      oscillator.connect(filter)
+      filter.connect(gainNode)
+      gainNode.connect(lowpass)
+      lowpass.connect(ctx.destination)
+
+      oscillator.start(ctx.currentTime)
+      oscillator.stop(ctx.currentTime + 0.02)
+    } catch {
+      // Audio not supported
+    }
+  }, [isMuted, getAudioContext, triggerHaptic])
+
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => !prev)
+    if (isMuted) {
+      try {
+        const ctx = getAudioContext()
+        if (ctx && ctx.state === "suspended") {
+          ctx.resume()
+        }
+      } catch {
+        // Audio not supported
+      }
+    }
+  }, [isMuted, getAudioContext])
+
+  const value = useMemo(() => ({ isMuted, toggleMute, playClick }), [isMuted, toggleMute, playClick])
+
+  return <SplitFlapAudioContext.Provider value={value}>{children}</SplitFlapAudioContext.Provider>
+}
+
+export function SplitFlapMuteToggle({ className = "" }: { className?: string }) {
+  const audio = useSplitFlapAudio()
+  if (!audio) return null
+
+  return (
+    <button
+      onClick={audio.toggleMute}
+      className={`inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors duration-200 ${className}`}
+      aria-label={audio.isMuted ? "Unmute sound effects" : "Mute sound effects"}
+    >
+      {audio.isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+      <span>{audio.isMuted ? "Sound Off" : "Sound On"}</span>
+    </button>
+  )
+}
+
+interface SplitFlapTextProps {
+  text: string
+  className?: string
+  speed?: number
+}
+
+const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("")
+
+function SplitFlapTextInner({ text, className = "", speed = 50 }: SplitFlapTextProps) {
+  const chars = useMemo(() => text.split(""), [text])
+  const [animationKey, setAnimationKey] = useState(0)
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const audio = useSplitFlapAudio()
+
+  const handleMouseEnter = useCallback(() => {
+    setAnimationKey((prev) => prev + 1)
+  }, [])
 
   useEffect(() => {
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-    const intervals: ReturnType<typeof setInterval>[] = [];
-
-    target.split("").forEach((finalChar, i) => {
-      const start = setTimeout(() => {
-        let frame = 0;
-        const tick = setInterval(() => {
-          frame += 1;
-          if (frame >= FRAMES_PER_LETTER) {
-            clearInterval(tick);
-            setFrames((prev) => {
-              const next = [...prev];
-              next[i] = finalChar;
-              return next;
-            });
-            setDone((prev) => {
-              const next = [...prev];
-              next[i] = true;
-              return next;
-            });
-            return;
-          }
-          setFrames((prev) => {
-            const next = [...prev];
-            next[i] = pickRandom();
-            return next;
-          });
-        }, FRAME_MS);
-        intervals.push(tick);
-      }, i * STAGGER_MS);
-      timeouts.push(start);
-    });
-
-    return () => {
-      timeouts.forEach(clearTimeout);
-      intervals.forEach(clearInterval);
-    };
-  }, [target]);
+    const timer = setTimeout(() => {
+      setHasInitialized(true)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
-    <div className={`inline-flex gap-1 sm:gap-1.5 ${className}`} aria-label={target}>
-      {frames.map((c, i) => (
-        <Tile key={i} char={c} done={done[i]} />
+    <div
+      className={`inline-flex gap-[0.08em] items-center cursor-pointer ${className}`}
+      onMouseEnter={handleMouseEnter}
+      style={{ perspective: "1000px" }}
+    >
+      {chars.map((char, index) => (
+        <SplitFlapChar
+          key={index}
+          char={char.toUpperCase()}
+          index={index}
+          animationKey={animationKey}
+          skipEntrance={hasInitialized}
+          speed={speed}
+          playClick={audio?.playClick}
+        />
       ))}
     </div>
-  );
+  )
 }
 
-function Tile({ char, done }: { char: string; done: boolean }) {
+export function SplitFlapText(props: SplitFlapTextProps) {
+  return <SplitFlapTextInner {...props} />
+}
+
+interface SplitFlapCharProps {
+  char: string
+  index: number
+  animationKey: number
+  skipEntrance: boolean
+  speed: number
+  playClick?: () => void
+}
+
+function SplitFlapChar({ char, index, animationKey, skipEntrance, speed, playClick }: SplitFlapCharProps) {
+  const displayChar = CHARSET.includes(char) ? char : " "
+  const isSpace = char === " "
+  const [currentChar, setCurrentChar] = useState(skipEntrance ? displayChar : " ")
+  const [isSettled, setIsSettled] = useState(skipEntrance)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const tileDelay = 0.15 * index
+
+  const bgColor = isSettled ? "hsl(0, 0%, 0%)" : "rgba(249, 115, 22, 0.2)"
+  const textColor = isSettled ? "#ffffff" : "#f97316"
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+
+    if (isSpace) {
+      setCurrentChar(" ")
+      setIsSettled(true)
+      return
+    }
+
+    setIsSettled(false)
+    setCurrentChar(CHARSET[Math.floor(Math.random() * CHARSET.length)])
+
+    const baseFlips = 8
+    const startDelay = skipEntrance ? tileDelay * 400 : tileDelay * 800
+    let flipIndex = 0
+    let hasStartedSettling = false
+
+    timeoutRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        const settleThreshold = baseFlips + index * 3
+
+        if (flipIndex >= settleThreshold && !hasStartedSettling) {
+          hasStartedSettling = true
+          if (intervalRef.current) clearInterval(intervalRef.current)
+          setCurrentChar(displayChar)
+          setIsSettled(true)
+          if (playClick) playClick()
+          return
+        }
+        setCurrentChar(CHARSET[Math.floor(Math.random() * CHARSET.length)])
+        if (flipIndex % 2 === 0 && playClick) playClick()
+        flipIndex++
+      }, speed)
+    }, startDelay)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [displayChar, isSpace, tileDelay, animationKey, skipEntrance, index, speed, playClick])
+
+  if (isSpace) {
+    return (
+      <div
+        style={{
+          width: "0.3em",
+          fontSize: "clamp(2.6rem, 10vw, 8.5rem)",
+        }}
+      />
+    )
+  }
+
   return (
-    <span
-      className={`relative inline-flex items-center justify-center w-9 h-12 sm:w-12 sm:h-16 md:w-14 md:h-20 rounded-sm transition-colors duration-150 ${
-        done ? "bg-foreground text-background" : "bg-accent text-accent-foreground"
-      }`}
+    <motion.div
+      initial={skipEntrance ? false : { opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: tileDelay, duration: 0.3, ease: "easeOut" }}
+      className="relative overflow-hidden flex items-center justify-center font-[family-name:var(--font-bebas)]"
       style={{
-        fontFamily: "var(--font-bebas)",
-        fontSize: "clamp(1.75rem, 4vw, 3rem)",
-        lineHeight: 1,
+        fontSize: "clamp(2.6rem, 10vw, 8.5rem)",
+        width: "0.65em",
+        height: "1.05em",
+        backgroundColor: bgColor,
+        transformStyle: "preserve-3d",
+        transition: "background-color 0.15s ease",
       }}
-      aria-hidden="true"
     >
-      <span className="absolute inset-x-0 top-1/2 h-px bg-background/30" aria-hidden="true" />
-      <span className="relative">{char}</span>
-    </span>
-  );
+      <div className="absolute inset-x-0 top-1/2 h-[1px] bg-black/20 pointer-events-none z-10" />
+
+      <div className="absolute inset-x-0 top-0 bottom-1/2 flex items-end justify-center overflow-hidden">
+        <span
+          className="block translate-y-[0.52em] leading-none transition-colors duration-150"
+          style={{ color: textColor }}
+        >
+          {currentChar}
+        </span>
+      </div>
+
+      <div className="absolute inset-x-0 top-1/2 bottom-0 flex items-start justify-center overflow-hidden">
+        <span
+          className="-translate-y-[0.52em] leading-none transition-colors duration-150"
+          style={{ color: textColor }}
+        >
+          {currentChar}
+        </span>
+      </div>
+
+      <motion.div
+        key={`${animationKey}-${isSettled}`}
+        initial={{ rotateX: -90 }}
+        animate={{ rotateX: 0 }}
+        transition={{
+          delay: skipEntrance ? tileDelay * 0.5 : tileDelay + 0.15,
+          duration: 0.25,
+          ease: [0.22, 0.61, 0.36, 1],
+        }}
+        className="absolute inset-x-0 top-0 bottom-1/2 origin-bottom overflow-hidden"
+        style={{
+          backgroundColor: bgColor,
+          transformStyle: "preserve-3d",
+          backfaceVisibility: "hidden",
+          transition: "background-color 0.15s ease",
+        }}
+      >
+        <div className="flex h-full items-end justify-center">
+          <span
+            className="translate-y-[0.52em] leading-none transition-colors duration-150"
+            style={{ color: textColor }}
+          >
+            {currentChar}
+          </span>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
 }

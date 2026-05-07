@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { LinkButton, Wordmark } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { SplitFlapText } from "@/components/SplitFlapText";
+import { SplitFlapText, SplitFlapAudioProvider, SplitFlapMuteToggle } from "@/components/SplitFlapText";
 import { ProductHighlights } from "@/components/ProductHighlights";
 
 const ADMIN_HOST = process.env.ADMIN_HOST || "admin.buildingsync.app";
@@ -129,16 +129,23 @@ function SiteHeader({ portalUrl, portalLabel }: { portalUrl: string | null; port
 function Hero({ portalUrl, portalLabel }: { portalUrl: string | null; portalLabel: string }) {
   return (
     <section className="relative max-w-7xl mx-auto px-6 pt-12 md:pt-20 pb-16 md:pb-24">
-      <SplitFlapText text="BUILDSYNC" />
+      <SplitFlapAudioProvider>
+        <div className="relative mb-8 md:mb-10">
+          <SplitFlapText text="BUILDSYNC" speed={80} />
+          <div className="mt-6 flex justify-start">
+            <SplitFlapMuteToggle />
+          </div>
+        </div>
+      </SplitFlapAudioProvider>
 
       <h1
-        className="mt-10 md:mt-14 tracking-tight leading-[1.05] text-foreground"
+        className="tracking-tight leading-[1.05] text-foreground"
         style={{
           fontFamily: "var(--font-bebas)",
-          fontSize: "clamp(2.75rem, 6vw, 5rem)",
+          fontSize: "clamp(2.5rem, 5vw, 4rem)",
         }}
       >
-        Run your building<br />from one place.
+        Run your building from one place.
       </h1>
 
       <p className="mt-5 md:mt-6 text-base md:text-lg text-muted-foreground max-w-160 leading-relaxed">
