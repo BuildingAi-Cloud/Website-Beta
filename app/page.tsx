@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { LinkButton, Wordmark } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const ADMIN_HOST = process.env.ADMIN_HOST || "admin.buildingsync.app";
 
@@ -60,24 +61,74 @@ export default async function Home({ searchParams }: { searchParams: SP }) {
   }
 
   return (
-    <main className="min-h-dvh">
-      <Hero portalUrl={portalUrl} portalLabel={portalLabel} />
-      <Pathways />
-      <Pricing />
-      <Faq />
-      <FinalCta />
-      <Footer />
-    </main>
+    <>
+      <SiteHeader portalUrl={portalUrl} portalLabel={portalLabel} />
+      <main className="pt-16 md:pt-20">
+        <Hero portalUrl={portalUrl} portalLabel={portalLabel} />
+        <Pathways />
+        <Principles />
+        <Pricing />
+        <Faq />
+        <FinalCta />
+        <SiteFooter />
+      </main>
+    </>
+  );
+}
+
+function SiteHeader({ portalUrl, portalLabel }: { portalUrl: string | null; portalLabel: string }) {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/85 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
+        <Link href="/" className="flex items-center" aria-label="BuildingSync home">
+          <Wordmark className="text-base md:text-lg" />
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-7 text-sm">
+          <a href="#pathways" className="text-muted-foreground hover:text-foreground transition-colors">For your role</a>
+          <a href="#principles" className="text-muted-foreground hover:text-foreground transition-colors">Pillars</a>
+          <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+          <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {portalUrl ? (
+            <Link
+              href={portalUrl}
+              className="inline-flex items-center px-3 md:px-4 py-1.5 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              {portalLabel}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/signin"
+                className="hidden sm:inline-flex items-center px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center px-3 md:px-4 py-1.5 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Get started
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
   );
 }
 
 function Hero({ portalUrl, portalLabel }: { portalUrl: string | null; portalLabel: string }) {
   return (
-    <section className="relative max-w-7xl mx-auto px-6 pt-20 md:pt-28 pb-16 md:pb-24">
-      <Wordmark className="text-2xl block" />
+    <section className="relative max-w-7xl mx-auto px-6 pt-12 md:pt-20 pb-16 md:pb-24">
+      <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">R1 · Property platform</p>
 
       <h1
-        className="mt-10 md:mt-14 tracking-tight leading-[1.05] text-foreground"
+        className="mt-6 md:mt-8 tracking-tight leading-[1.05] text-foreground"
         style={{
           fontFamily: "var(--font-bebas)",
           fontSize: "clamp(2.75rem, 6vw, 5rem)",
@@ -87,7 +138,7 @@ function Hero({ portalUrl, portalLabel }: { portalUrl: string | null; portalLabe
       </h1>
 
       <p className="mt-5 md:mt-6 text-base md:text-lg text-muted-foreground max-w-160 leading-relaxed">
-        Maintenance, residents, vendors, communications, governance. Built for property teams who want to spend less time on admin and more time on residents.
+        Maintenance, residents, communications, and team execution. Built for property teams who want to spend less time on admin and more time on residents.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -123,28 +174,28 @@ const PATHWAYS = [
   {
     title: "Facility Manager",
     subtitle: "Operational uptime and SLA control",
-    bullets: ["Work orders", "Asset health", "Vendor performance"],
+    bullets: ["Work orders", "Status updates", "Vendor visibility"],
   },
   {
     title: "Building Manager",
     subtitle: "Resident operations and team execution",
-    bullets: ["Comms and amenities", "Concierge workflows", "Policy enforcement"],
+    bullets: ["Onboard residents", "Post announcements", "Manage units"],
   },
   {
-    title: "Owner & Leadership",
-    subtitle: "Governance, risk, and portfolio outcomes",
-    bullets: ["Compliance posture", "Audit readiness", "Program visibility"],
+    title: "Concierge",
+    subtitle: "Front-desk operations",
+    bullets: ["Package log", "Read-only work orders", "Resident directory"],
   },
   {
     title: "Resident & Tenant",
     subtitle: "One app for the building",
-    bullets: ["Maintenance requests", "Announcements", "Pay rent"],
+    bullets: ["Submit maintenance", "Read announcements", "Manage account"],
   },
 ];
 
 function Pathways() {
   return (
-    <section className="relative max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-border">
+    <section id="pathways" className="relative max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-border">
       <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">00 / Journey</p>
       <h2
         className="mt-4 tracking-tight"
@@ -181,56 +232,132 @@ function Pathways() {
   );
 }
 
+const PRINCIPLES = [
+  {
+    number: "01",
+    title: "Operational Excellence",
+    summary: "Reduce reactive work with clear maintenance and team workflows.",
+    points: ["Open / assigned / closed lifecycle", "Email notifications on every state change"],
+  },
+  {
+    number: "02",
+    title: "Security and Privacy",
+    summary: "Protect people, assets, and data with row-level isolation and Supabase auth.",
+    points: ["Per-building data isolation by buildingId", "Encrypted storage, audited auth flows"],
+  },
+  {
+    number: "03",
+    title: "Self-serve & Honest",
+    summary: "No salesperson in the loop. No long-term contract.",
+    points: ["Sign up, onboard a building, invite residents — under an hour", "Cancel anytime, export your data"],
+  },
+  {
+    number: "04",
+    title: "Mobile-first",
+    summary: "Installable PWA today; native iOS and Android on the roadmap.",
+    points: ["Install from Safari or Chrome to home screen", "Offline shell + brand-mark home tile"],
+  },
+];
+
+function Principles() {
+  return (
+    <section id="principles" className="relative max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-border">
+      <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">03 / Pillars</p>
+      <h2
+        className="mt-4 tracking-tight"
+        style={{ fontFamily: "var(--font-bebas)", fontSize: "clamp(2rem, 5vw, 4rem)" }}
+      >
+        CORE PILLARS
+      </h2>
+      <p className="mt-3 max-w-2xl font-mono text-xs md:text-sm text-muted-foreground leading-relaxed">
+        Foundations that guide operations, security, transparency, and the mobile experience.
+      </p>
+
+      <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        {PRINCIPLES.map((p) => (
+          <article
+            key={p.number}
+            className="border border-border bg-card p-5 md:p-6 rounded-lg"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h3
+                className="text-2xl md:text-3xl tracking-tight leading-none text-foreground"
+                style={{ fontFamily: "var(--font-bebas)" }}
+              >
+                {p.title}
+              </h3>
+              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent">{p.number}</span>
+            </div>
+            <p className="mt-3 font-mono text-xs md:text-sm text-muted-foreground leading-relaxed">{p.summary}</p>
+            <ul className="mt-4 space-y-2">
+              {p.points.map((point) => (
+                <li key={point} className="font-mono text-xs text-foreground/85">• {point}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Essential lists ONLY features that are built and live in R1.
+// Professional / Enterprise are roadmap — gated behind "Coming soon" CTAs
+// so we don't promise transactions we can't fulfill.
 const TIERS = [
   {
     name: "Essential",
     price: "$2.50",
     period: "/unit/month",
-    description: "Per-unit pricing with role-based onboarding setup",
+    description: "Per-unit pricing with role-based onboarding.",
     features: [
-      "Resident portal & mobile PWA",
-      "Maintenance request tracking",
-      "Community announcements",
-      "Package notifications",
-      "Email & chat support",
+      "Resident & tenant portal (PWA)",
+      "Building staff portal (BM, FM, Concierge)",
+      "Maintenance request tracking + email notifications",
+      "Community announcements with email broadcast",
+      "Single + bulk-CSV resident onboarding",
+      "Profile & password self-service",
     ],
     cta: "Get started",
     href: "/signup",
     highlight: true,
+    available: true,
   },
   {
     name: "Professional",
     price: "$4.50",
     period: "/unit/month",
-    description: "For property management companies",
+    description: "For property management companies.",
     features: [
       "All Essential features",
-      "AI package tracking",
-      "Visitor & contractor management",
-      "Digital shift logs",
-      "SMS & voice broadcasting",
+      "Multi-building portfolios",
+      "Advanced reporting & exports",
       "Priority support",
+      "SMS broadcasting (roadmap)",
+      "Visitor & contractor management (roadmap)",
     ],
     cta: "Coming soon",
     href: null,
     highlight: false,
+    available: false,
   },
   {
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "For large-scale portfolios",
+    description: "For large-scale portfolios.",
     features: [
       "All Professional features",
-      "E-voting & governance tools",
       "Custom API integrations",
       "Dedicated account manager",
-      "24/7 phone support",
+      "SSO / SAML",
       "Tailored onboarding & training",
+      "Custom data residency",
     ],
     cta: "Contact us",
     href: "mailto:hello@buildingsync.app",
     highlight: false,
+    available: true,
   },
 ];
 
@@ -256,12 +383,19 @@ function Pricing() {
               t.highlight ? "border-accent bg-accent/5" : "border-border bg-card"
             }`}
           >
-            <h3
-              className="text-3xl tracking-tight"
-              style={{ fontFamily: "var(--font-bebas)" }}
-            >
-              {t.name}
-            </h3>
+            <div className="flex items-start justify-between">
+              <h3
+                className="text-3xl tracking-tight"
+                style={{ fontFamily: "var(--font-bebas)" }}
+              >
+                {t.name}
+              </h3>
+              {!t.available && (
+                <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border border-border text-muted-foreground">
+                  Roadmap
+                </span>
+              )}
+            </div>
             <div className="mt-4 flex items-baseline gap-1">
               <span className="text-4xl font-extrabold text-foreground">{t.price}</span>
               {t.period && <span className="text-sm text-muted-foreground">{t.period}</span>}
@@ -311,25 +445,29 @@ const FAQS = [
   },
   {
     q: "Do you have an iOS or Android app?",
-    a: "BuildingSync is an installable PWA (Progressive Web App) — residents and staff install it from Safari or Chrome to their home screen and get a native-feeling experience today. Dedicated iOS and Android apps are on the roadmap.",
-  },
-  {
-    q: "Can I export my data and leave?",
-    a: "Yes. Every user can download their own data as JSON from Account → Privacy. Building admins can export the full building's records. Standard formats only — CSV, JSON. No lock-in.",
+    a: "BuildingSync is an installable PWA (Progressive Web App) — residents and staff install it from Safari or Chrome to their home screen and get a native-feeling experience today, including the brand-mark home tile and an offline page. Dedicated iOS and Android apps are on the roadmap.",
   },
   {
     q: "Is my building's data shared with other customers?",
     a: "No. Every building's data is row-level isolated by buildingId. We never aggregate or share tenant data across customers. Privacy-first by design.",
   },
   {
+    q: "What happens to credit-card processing fees on rent?",
+    a: "When rent payment ships, the landlord absorbs Stripe's processing fee. We never pass it to the tenant — Ontario's Residential Tenancies Act (s. 134) prohibits charging tenants any fee beyond lawful rent.",
+  },
+  {
+    q: "Can I export my data and leave?",
+    a: "Yes. Building admins can export the full building's records, and every user can download their own data. Standard formats only — CSV, JSON. No lock-in.",
+  },
+  {
     q: "Can I cancel anytime?",
-    a: "Yes. Month-to-month, no long-term contract. Cancel from Settings and you stop being billed at the end of the current period. Your data stays available for 30 days for export.",
+    a: "Yes. Month-to-month, no long-term contract. Cancel from Account and you stop being billed at the end of the current period. Your data stays available for 30 days for export.",
   },
 ];
 
 function Faq() {
   return (
-    <section className="relative max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-border">
+    <section id="faq" className="relative max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-border">
       <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">06 / Questions</p>
       <h2
         className="mt-4 tracking-tight"
@@ -380,12 +518,47 @@ function FinalCta() {
   );
 }
 
-function Footer() {
+function SiteFooter() {
   return (
-    <footer className="max-w-7xl mx-auto px-6 py-10 border-t border-border">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-muted-foreground">
-        <Wordmark className="text-base" />
-        <p className="font-mono">© {new Date().getFullYear()} BuildingSync · R1 · {process.env.NODE_ENV}</p>
+    <footer className="max-w-7xl mx-auto px-6 py-12 md:py-16 border-t border-border">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+        <div className="col-span-2 md:col-span-1">
+          <Wordmark className="text-base" />
+          <p className="mt-3 font-mono text-xs text-muted-foreground max-w-xs leading-relaxed">
+            Property management for residents, tenants, and the team that keeps the lights on.
+          </p>
+        </div>
+
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">Product</p>
+          <ul className="mt-3 space-y-2 font-mono text-xs text-muted-foreground">
+            <li><a href="#pathways" className="hover:text-foreground transition-colors">For your role</a></li>
+            <li><a href="#principles" className="hover:text-foreground transition-colors">Pillars</a></li>
+            <li><a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
+            <li><a href="#faq" className="hover:text-foreground transition-colors">FAQ</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">Account</p>
+          <ul className="mt-3 space-y-2 font-mono text-xs text-muted-foreground">
+            <li><Link href="/signin" className="hover:text-foreground transition-colors">Sign in</Link></li>
+            <li><Link href="/signup" className="hover:text-foreground transition-colors">Sign up</Link></li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">Company</p>
+          <ul className="mt-3 space-y-2 font-mono text-xs text-muted-foreground">
+            <li><a href="mailto:hello@buildingsync.app" className="hover:text-foreground transition-colors">Contact</a></li>
+            <li><a href="https://github.com/BuildingAi-Cloud" className="hover:text-foreground transition-colors" rel="noopener">GitHub</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-muted-foreground font-mono">
+        <p>© {new Date().getFullYear()} BuildingSync</p>
+        <p>R1 · {process.env.NODE_ENV}</p>
       </div>
     </footer>
   );
