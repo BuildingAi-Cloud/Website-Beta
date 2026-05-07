@@ -29,10 +29,15 @@ export default async function TeamWorkOrdersPage() {
 
   return (
     <main className="px-6 py-10 max-w-5xl mx-auto">
-      <div>
+      <div className="flex items-baseline gap-3">
         <h1 className="text-3xl font-semibold tracking-tight">Work orders</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{workOrders.length} total</p>
+        {!canAct && (
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border border-border bg-muted/30 text-muted-foreground">
+            View only
+          </span>
+        )}
       </div>
+      <p className="mt-1 text-sm text-muted-foreground">{workOrders.length} total</p>
 
       {workOrders.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">
