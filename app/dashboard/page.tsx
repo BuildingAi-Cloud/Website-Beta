@@ -24,10 +24,17 @@ export default async function DashboardPage() {
     <div className="min-h-dvh">
       <header className="border-b border-border bg-card/40 backdrop-blur sticky top-0 z-10">
         <div className="px-6 py-3 flex items-center justify-between gap-4 max-w-3xl mx-auto">
-          <Link href="/dashboard" className="flex items-baseline gap-2">
-            <Wordmark className="text-base" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">{appUser.role}</span>
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="flex items-baseline gap-2">
+              <Wordmark className="text-base" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">{appUser.role}</span>
+            </Link>
+            <nav className="flex gap-5 text-sm">
+              <Link href="/dashboard/maintenance" className="text-muted-foreground hover:text-foreground transition-colors">Maintenance</Link>
+              <Link href="/dashboard/announcements" className="text-muted-foreground hover:text-foreground transition-colors">Announcements</Link>
+              <Link href="/dashboard/account" className="text-muted-foreground hover:text-foreground transition-colors">Account</Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-3 text-sm">
             <ThemeToggle />
             <span className="text-muted-foreground hidden md:inline">{authUser.email}</span>
