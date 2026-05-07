@@ -4,9 +4,16 @@ import { Wordmark } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MobileMenu, type MobileNavItem } from "@/components/MobileMenu";
 import { SignOutButton } from "@/components/SignOutButton";
+import { NotificationBell } from "@/components/NotificationBell";
+import { getNotifications } from "@/lib/notifications";
 
 export default async function TeamLayout({ children }: { children: React.ReactNode }) {
   const { authUser, appUser } = await requireTeam();
+  const notifications = await getNotifications({
+    id: appUser.id,
+    role: appUser.role,
+    buildingId: appUser.buildingId,
+  });
 
   // Build the role-gated nav once and feed it to both desktop nav + mobile drawer.
   const items: MobileNavItem[] = [
@@ -57,6 +64,7 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
           </div>
 
           <div className="flex items-center gap-2">
+            <NotificationBell items={notifications} />
             <ThemeToggle />
             <span className="hidden lg:inline text-sm text-muted-foreground">
               {authUser.email}
