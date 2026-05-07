@@ -6,7 +6,7 @@ import { SignOutButton } from "@/components/SignOutButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/AccountMenu";
 import { roleLabel } from "@/components/RoleBadge";
-import type { Notification } from "@/lib/notifications";
+import type { NotificationItem } from "@/components/NotificationBell";
 
 // Unified post-login chrome. Replaces three near-identical headers that had
 // drifted (different z-index, /platform missing the mobile menu entirely,
@@ -30,7 +30,7 @@ export function PortalShell({
   userEmail: string;
   userRole: string;
   // Optional — admin /platform doesn't surface a notification feed today.
-  notifications?: Notification[];
+  notifications?: NotificationItem[];
   children: React.ReactNode;
 }) {
   // The mobile drawer doubles as the account surface on small screens —

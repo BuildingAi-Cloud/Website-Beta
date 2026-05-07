@@ -50,13 +50,14 @@ export function welcomeEmail(args: {
   email: string;
   password: string;
   buildingName: string | null;
-  role: "resident" | "tenant";
+  role: "resident" | "tenant" | "facility_manager" | "concierge";
 }) {
   const { email, password, buildingName, role } = args;
   const signInUrl = `${APP_URL}/signin`;
+  const roleLabel = role.replace(/_/g, " ");
   const html = wrap(`
 <h1 style="font-size:22px;margin:0 0 8px;">Welcome to BuildingSync</h1>
-<p>Your ${role} account at <strong>${escapeHtml(buildingName || "your building")}</strong> has been created.</p>
+<p>Your ${roleLabel} account at <strong>${escapeHtml(buildingName || "your building")}</strong> has been created.</p>
 <table style="margin:16px 0;border-collapse:collapse;">
   <tr><td style="padding:6px 12px 6px 0;color:#666;">Email</td><td style="padding:6px 0;font-family:monospace;">${escapeHtml(email)}</td></tr>
   <tr><td style="padding:6px 12px 6px 0;color:#666;">Temporary password</td><td style="padding:6px 0;font-family:monospace;">${escapeHtml(password)}</td></tr>
