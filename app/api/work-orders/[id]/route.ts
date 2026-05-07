@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getOrCreateAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmailFireAndForget, workOrderStatusChangedEmail } from "@/lib/email";
+import { logAuditFireAndForget } from "@/lib/audit";
 
 const PatchBody = z.object({
   status: z.enum(["open", "assigned", "in_progress", "closed"]).optional(),
@@ -33,6 +34,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (parsed.data.assignSelf) data.assignedToId = appUser.id;
 
   const updated = await prisma.workOrder.update({ where: { id }, data });
+
+  logAuditFireAndForget({
+    actorId: appUser.id,
+    action: data.status && data.status !== wo.status ? "status_change" : "update",
+    entityType: "WorkOrder",
+    entityId: id,
+    buildingId: wo.buildingId,
+    before: { status: wo.status, assignedToId: wo.assignedToId },
+    after: { status: updated.status, assignedToId: updated.assignedToId },
+  });
 
   // Email the opener if status actually changed.
   if (data.status && data.status !== wo.status) {

@@ -7,6 +7,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, welcomeEmail } from "@/lib/email";
+import { logAuditFireAndForget } from "@/lib/audit";
 
 // Server-side Supabase client with the SERVICE_ROLE key — required for
 // auth.admin.createUser. Never expose this client to the browser.
@@ -60,6 +61,7 @@ export async function addResident(_prev: unknown, formData: FormData): Promise<R
   // Existing user? Re-link to this building/unit/role rather than re-creating.
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
+    const before = { role: existing.role, buildingId: existing.buildingId, unitId: existing.unitId };
     await prisma.user.update({
       where: { id: existing.id },
       data: {
@@ -67,6 +69,16 @@ export async function addResident(_prev: unknown, formData: FormData): Promise<R
         buildingId: session.appUser.buildingId,
         unitId: unitId,
       },
+    });
+    logAuditFireAndForget({
+      actorId: session.appUser.id,
+      action: "update",
+      entityType: "User",
+      entityId: existing.id,
+      buildingId: session.appUser.buildingId,
+      before,
+      after: { role, buildingId: session.appUser.buildingId, unitId },
+      metadata: { reason: "relink_existing" },
     });
     revalidatePath("/team/residents");
     return { ok: true, email, password: null, message: `Re-linked existing account.` };
@@ -93,6 +105,15 @@ export async function addResident(_prev: unknown, formData: FormData): Promise<R
       buildingId: session.appUser.buildingId,
       unitId: unitId,
     },
+  });
+
+  logAuditFireAndForget({
+    actorId: session.appUser.id,
+    action: "create",
+    entityType: "User",
+    entityId: data.user.id,
+    buildingId: session.appUser.buildingId,
+    after: { email, role, buildingId: session.appUser.buildingId, unitId },
   });
 
   // Welcome email with temp password + sign-in link. Awaited so a delivery
@@ -199,7 +220,18 @@ export async function bulkAddResidents(_prev: unknown, formData: FormData): Prom
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
+      const before = { role: existing.role, buildingId: existing.buildingId, unitId: existing.unitId };
       await prisma.user.update({ where: { id: existing.id }, data: linkData });
+      logAuditFireAndForget({
+        actorId: session.appUser.id,
+        action: "update",
+        entityType: "User",
+        entityId: existing.id,
+        buildingId: session.appUser.buildingId,
+        before,
+        after: linkData,
+        metadata: { reason: "bulk_relink", row: rowNum },
+      });
       rows.push({ row: rowNum, email, password: null, status: "linked" });
       linked++;
       continue;
@@ -217,6 +249,15 @@ export async function bulkAddResidents(_prev: unknown, formData: FormData): Prom
     }
     await prisma.user.create({
       data: { id: data.user.id, email, ...linkData },
+    });
+    logAuditFireAndForget({
+      actorId: session.appUser.id,
+      action: "create",
+      entityType: "User",
+      entityId: data.user.id,
+      buildingId: session.appUser.buildingId,
+      after: { email, ...linkData },
+      metadata: { reason: "bulk_create", row: rowNum },
     });
     // Fire welcome email; don't fail the row if it errors (BM still sees the temp password in the response).
     sendEmail({

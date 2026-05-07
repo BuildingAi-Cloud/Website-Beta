@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono, Bebas_Neue } from "next/font/google";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import { BetaBanner } from "@/components/BetaBanner";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${bebasNeue.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
+        <BetaBanner />
         {children}
         <RegisterServiceWorker />
         <PwaInstallPrompt />

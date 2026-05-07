@@ -553,6 +553,7 @@ function SiteFooter() {
           service
         </p>
         <div className="flex items-center gap-4">
+          <Link href="/docs" className="hover:text-foreground transition-colors">Docs</Link>
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <a

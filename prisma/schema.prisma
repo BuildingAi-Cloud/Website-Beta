@@ -32,6 +32,18 @@ enum PaymentStatus {
   refunded
 }
 
+enum AuditAction {
+  create
+  update
+  delete
+  role_change
+  status_change
+  password_reset
+  login
+  signout
+  export
+}
+
 // Mirror of Supabase auth.users keyed by the same uuid (auth.uid()).
 // Holds app-side role + building/unit assignments.
 model User {
@@ -46,6 +58,10 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
+  // Soft-delete: never DELETE rows (audit + LTB-evidence concerns).
+  // Set deletedAt instead and filter out at query time.
+  deletedAt  DateTime?
+
   building          Building?        @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   unit              Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
   leases            Lease[]
@@ -53,9 +69,11 @@ model User {
   workOrdersAssign  WorkOrder[]      @relation("WorkOrderAssignee")
   announcementsBy   Announcement[]   @relation("AnnouncementAuthor")
   payments          Payment[]
+  auditLogs         AuditLog[]       @relation("AuditActor")
 
   @@index([buildingId])
   @@index([role])
+  @@index([deletedAt])
 }
 
 model Building {
@@ -124,6 +142,7 @@ model WorkOrder {
   status       WorkOrderStatus @default(open)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
 
   building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   unit       Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
@@ -132,6 +151,7 @@ model WorkOrder {
 
   @@index([buildingId, status])
   @@index([assignedToId])
+  @@index([deletedAt])
 }
 
 model Announcement {
@@ -141,11 +161,39 @@ model Announcement {
   title      String
   body       String
   createdAt  DateTime @default(now())
+  deletedAt  DateTime?
 
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   author   User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
 
   @@index([buildingId, createdAt])
+  @@index([deletedAt])
+}
+
+// Append-only audit trail. Every privileged write should call logAudit()
+// in lib/audit.ts. Don't ever UPDATE or DELETE these rows — they're
+// evidence-grade, including for LTB landlord-tenant disputes where
+// timestamps and authorship matter.
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?     @db.Uuid
+  action     AuditAction
+  entityType String
+  entityId   String
+  buildingId String?
+  before     Json?
+  after      Json?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([buildingId, createdAt])
+  @@index([createdAt])
 }
 
 model Payment {
