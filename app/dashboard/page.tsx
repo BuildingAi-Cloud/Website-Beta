@@ -8,18 +8,41 @@ import { MobileMenu, type MobileNavItem } from "@/components/MobileMenu";
 
 const STAFF_ROLES = ["building_manager", "facility_manager", "concierge"] as const;
 
+const STATUS_TONE: Record<string, string> = {
+  open: "bg-accent/10 text-accent border-accent/30",
+  assigned: "bg-muted text-muted-foreground border-border",
+  in_progress: "bg-foreground/5 text-foreground border-border",
+  closed: "bg-muted/50 text-muted-foreground border-border line-through",
+};
+
 export default async function DashboardPage() {
   const { authUser, appUser } = await requireUser();
 
   // Resident dashboard is for residents/tenants only. Staff land on /team.
   if ((STAFF_ROLES as readonly string[]).includes(appUser.role)) redirect("/team");
 
-  const building = appUser.buildingId
-    ? await prisma.building.findUnique({ where: { id: appUser.buildingId } })
-    : null;
-  const unit = appUser.unitId
-    ? await prisma.unit.findUnique({ where: { id: appUser.unitId } })
-    : null;
+  const [building, unit, recentWorkOrders, recentAnnouncements] = await Promise.all([
+    appUser.buildingId
+      ? prisma.building.findUnique({ where: { id: appUser.buildingId } })
+      : Promise.resolve(null),
+    appUser.unitId
+      ? prisma.unit.findUnique({ where: { id: appUser.unitId } })
+      : Promise.resolve(null),
+    prisma.workOrder.findMany({
+      where: { openedById: appUser.id },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: { id: true, title: true, status: true, createdAt: true },
+    }),
+    appUser.buildingId
+      ? prisma.announcement.findMany({
+          where: { buildingId: appUser.buildingId },
+          orderBy: { createdAt: "desc" },
+          take: 2,
+          select: { id: true, title: true, body: true, createdAt: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
   const navItems: MobileNavItem[] = [
     { href: "/dashboard/maintenance", label: "Maintenance" },
@@ -79,14 +102,14 @@ export default async function DashboardPage() {
           {building ? (
             <>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Your building</p>
-              <h1 className="text-4xl font-semibold tracking-tight">{building.name}</h1>
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{building.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {unit ? `Unit ${unit.unitNumber} · ` : ""}{building.address}, {building.city}
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-4xl font-semibold tracking-tight">Welcome</h1>
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Welcome</h1>
               <p className="text-sm text-muted-foreground mt-2">
                 Your account is not yet linked to a building. Ask your Building Manager to assign you.
               </p>
@@ -94,7 +117,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <nav className="mt-10 grid sm:grid-cols-2 gap-3">
+        <nav className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
             href="/dashboard/maintenance"
             className="block bg-card border border-border rounded-md p-5 hover:border-accent transition-colors"
@@ -110,6 +133,58 @@ export default async function DashboardPage() {
             <div className="text-sm text-muted-foreground mt-1">Notices from your building team</div>
           </Link>
         </nav>
+
+        {recentWorkOrders.length > 0 && (
+          <section className="mt-10">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Your recent requests
+              </h2>
+              <Link href="/dashboard/maintenance" className="text-xs text-accent hover:underline">
+                View all
+              </Link>
+            </div>
+            <ul className="space-y-2">
+              {recentWorkOrders.map((wo) => (
+                <li key={wo.id} className="bg-card border border-border rounded-md px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{wo.title}</div>
+                    <div className="text-xs text-muted-foreground/70 mt-0.5">
+                      {new Date(wo.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border shrink-0 ${STATUS_TONE[wo.status]}`}>
+                    {wo.status.replace("_", " ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {recentAnnouncements.length > 0 && (
+          <section className="mt-10">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Latest announcements
+              </h2>
+              <Link href="/dashboard/announcements" className="text-xs text-accent hover:underline">
+                View all
+              </Link>
+            </div>
+            <ul className="space-y-2">
+              {recentAnnouncements.map((a) => (
+                <li key={a.id} className="bg-card border border-border rounded-md px-4 py-3">
+                  <div className="font-medium">{a.title}</div>
+                  <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{a.body}</div>
+                  <div className="text-xs text-muted-foreground/70 mt-2">
+                    {new Date(a.createdAt).toLocaleDateString()}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
     </div>
   );

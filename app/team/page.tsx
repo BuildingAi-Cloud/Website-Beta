@@ -2,17 +2,33 @@ import Link from "next/link";
 import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 
+const STATUS_TONE: Record<string, string> = {
+  open: "bg-accent/10 text-accent border-accent/30",
+  assigned: "bg-muted text-muted-foreground border-border",
+  in_progress: "bg-foreground/5 text-foreground border-border",
+  closed: "bg-muted/50 text-muted-foreground border-border line-through",
+};
+
 export default async function TeamHome() {
   const { appUser } = await requireTeam();
 
-  const [building, openCount, residentCount, announcementCount] = appUser.buildingId
+  const [building, openCount, residentCount, announcementCount, recentWorkOrders] = appUser.buildingId
     ? await Promise.all([
         prisma.building.findUnique({ where: { id: appUser.buildingId } }),
         prisma.workOrder.count({ where: { buildingId: appUser.buildingId, status: { in: ["open", "assigned", "in_progress"] } } }),
         prisma.user.count({ where: { buildingId: appUser.buildingId, role: { in: ["resident", "tenant"] } } }),
         prisma.announcement.count({ where: { buildingId: appUser.buildingId } }),
+        prisma.workOrder.findMany({
+          where: { buildingId: appUser.buildingId, status: { in: ["open", "assigned", "in_progress"] } },
+          orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+          take: 4,
+          include: {
+            openedBy: { select: { name: true, email: true } },
+            unit: { select: { unitNumber: true } },
+          },
+        }),
       ])
-    : [null, 0, 0, 0];
+    : [null, 0, 0, 0, []];
 
   const isBM = appUser.role === "building_manager";
 
@@ -33,7 +49,7 @@ export default async function TeamHome() {
         )}
       </div>
 
-      <div className="mt-10 grid sm:grid-cols-3 gap-3">
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatLink href="/team/work-orders" value={openCount} label="Open work orders" />
         <StatLink href="/team/residents" value={residentCount} label="Residents" />
         <StatLink
@@ -42,6 +58,41 @@ export default async function TeamHome() {
           label="Announcements"
         />
       </div>
+
+      {recentWorkOrders.length > 0 && (
+        <section className="mt-10">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Open work orders
+            </h2>
+            <Link href="/team/work-orders" className="text-xs text-accent hover:underline">
+              View all
+            </Link>
+          </div>
+          <ul className="space-y-2">
+            {recentWorkOrders.map((wo) => (
+              <li key={wo.id} className="bg-card border border-border rounded-md px-4 py-3">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium truncate">{wo.title}</span>
+                      {wo.unit && (
+                        <span className="text-xs text-muted-foreground">Unit {wo.unit.unitNumber}</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground/70 mt-1">
+                      Opened by {wo.openedBy.name || wo.openedBy.email} · {new Date(wo.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border shrink-0 ${STATUS_TONE[wo.status]}`}>
+                    {wo.status.replace("_", " ")}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }
