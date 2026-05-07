@@ -315,8 +315,10 @@ const TIERS = [
       "Building staff portal (BM, FM, Concierge)",
       "Maintenance request tracking + email notifications",
       "Community announcements with email broadcast",
+      "Package notifications",
       "Single + bulk-CSV resident onboarding",
       "Profile & password self-service",
+      "Email support",
     ],
     cta: "Get started",
     href: "/signup",
@@ -355,7 +357,7 @@ const TIERS = [
       "Custom data residency",
     ],
     cta: "Contact us",
-    href: "mailto:hello@buildingsync.app",
+    href: "mailto:info@buildingsync.app",
     highlight: false,
     available: true,
   },
@@ -521,8 +523,8 @@ function FinalCta() {
 function SiteFooter() {
   return (
     <footer className="max-w-7xl mx-auto px-6 py-12 md:py-16 border-t border-border">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-        <div className="col-span-2 md:col-span-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+        <div>
           <Wordmark className="text-base" />
           <p className="mt-3 font-mono text-xs text-muted-foreground max-w-xs leading-relaxed">
             Property management for residents, tenants, and the team that keeps the lights on.
@@ -546,19 +548,28 @@ function SiteFooter() {
             <li><Link href="/signup" className="hover:text-foreground transition-colors">Sign up</Link></li>
           </ul>
         </div>
-
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">Company</p>
-          <ul className="mt-3 space-y-2 font-mono text-xs text-muted-foreground">
-            <li><a href="mailto:hello@buildingsync.app" className="hover:text-foreground transition-colors">Contact</a></li>
-            <li><a href="https://github.com/BuildingAi-Cloud" className="hover:text-foreground transition-colors" rel="noopener">GitHub</a></li>
-          </ul>
-        </div>
       </div>
 
       <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-muted-foreground font-mono">
-        <p>© {new Date().getFullYear()} BuildingSync</p>
-        <p>R1 · {process.env.NODE_ENV}</p>
+        <p>
+          © {new Date().getFullYear()} BuildingSync · a{" "}
+          <a href="https://node2.io" rel="noopener" className="hover:text-foreground transition-colors">Node2.io</a>{" "}
+          service
+        </p>
+        <div className="flex items-center gap-4">
+          <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <a
+            href="https://www.linkedin.com/company/node2-io/"
+            rel="noopener"
+            aria-label="Node2.io on LinkedIn"
+            className="inline-flex items-center hover:text-foreground transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M19 0h-14C2.24 0 0 2.24 0 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5V5c0-2.76-2.24-5-5-5zM8 19H5V8h3v11zM6.5 6.73c-.97 0-1.75-.79-1.75-1.76s.78-1.76 1.75-1.76 1.75.79 1.75 1.76-.78 1.76-1.75 1.76zM20 19h-3v-5.6c0-3.37-4-3.11-4 0V19h-3V8h3v1.77c1.4-2.59 7-2.78 7 2.48V19z" />
+            </svg>
+            <span className="ml-2 hidden sm:inline">LinkedIn</span>
+          </a>
+        </div>
       </div>
     </footer>
   );
