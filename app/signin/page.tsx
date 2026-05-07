@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { AuthShell } from "@/components/AuthShell";
 
@@ -14,7 +15,16 @@ const primaryButton =
   "w-full inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground py-2.5 rounded-md text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInPageInner />
+    </Suspense>
+  );
+}
+
+function SignInPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -22,6 +32,17 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Surface signed-out / reset-success toasts when the redirect lands
+  // here from /auth/signout or /auth/reset.
+  useEffect(() => {
+    if (searchParams.get("signedout") === "1") {
+      toast.success("Signed out", { description: "See you next time." });
+    }
+    if (searchParams.get("reset") === "1") {
+      toast.success("Password updated", { description: "Sign in with your new password." });
+    }
+  }, [searchParams]);
 
   // Inline reset flow
   const [showReset, setShowReset] = useState(false);
@@ -47,6 +68,7 @@ export default function SignInPage() {
       }
       return;
     }
+    toast.success("Welcome back", { description: email });
     router.push("/?go=1");
     router.refresh();
   }

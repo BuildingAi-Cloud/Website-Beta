@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import type { UserRole } from "@prisma/client";
 import { saveProfile, savePassword } from "./actions";
 
@@ -194,8 +195,10 @@ function ProfileStep({
     setSaving(false);
     if (!res.ok) {
       setError(res.error);
+      toast.error("Couldn't save profile", { description: res.error });
       return;
     }
+    toast.success("Profile saved");
     onSaved();
   }
 
@@ -266,8 +269,10 @@ function PasswordStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: () => 
     setSaving(false);
     if (!res.ok) {
       setError(res.error);
+      toast.error("Couldn't update password", { description: res.error });
       return;
     }
+    toast.success("Password updated");
     onSaved();
   }
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { addResident } from "./actions";
 
 type Result =
@@ -19,6 +20,11 @@ export function AddResidentForm({
 }) {
   const [state, formAction, pending] = useActionState<Result, FormData>(addResident, null);
   const [copied, setCopied] = useState<"email" | "password" | null>(null);
+
+  useEffect(() => {
+    if (state?.ok) toast.success("Resident added", { description: state.email });
+    if (state && !state.ok) toast.error("Couldn't add resident", { description: state.error });
+  }, [state]);
 
   function copy(text: string, kind: "email" | "password") {
     if (!navigator.clipboard) return;

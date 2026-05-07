@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 type Status = "open" | "in_progress" | "scheduled" | "completed" | "closed";
 
@@ -66,9 +67,12 @@ export function WorkOrderRow({ workOrder, canAct }: Props) {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error || "Failed to update.");
+      const msg = body.error || "Failed to update.";
+      setError(msg);
+      toast.error("Couldn't update", { description: msg });
       return;
     }
+    toast.success(`Marked ${next.replace("_", " ")}`, { description: workOrder.title });
     startTransition(() => router.refresh());
   }
 

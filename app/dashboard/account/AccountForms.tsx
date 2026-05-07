@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { updateProfile, updatePassword } from "./actions";
 
 type Result = { ok: true; message: string } | { ok: false; error: string } | null;
@@ -31,6 +32,11 @@ export function ProfileForm({
   defaultPhone: string | null;
 }) {
   const [state, formAction, pending] = useActionState<Result, FormData>(updateProfile, null);
+
+  useEffect(() => {
+    if (state?.ok) toast.success("Profile saved");
+    if (state && !state.ok) toast.error("Couldn't save profile", { description: state.error });
+  }, [state]);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -70,6 +76,14 @@ export function PasswordForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const strength = useMemo(() => passwordStrength(password), [password]);
+
+  useEffect(() => {
+    if (state?.ok) {
+      toast.success("Password updated", { description: "You'll use the new password next time." });
+      setPassword("");
+    }
+    if (state && !state.ok) toast.error("Couldn't update password", { description: state.error });
+  }, [state]);
 
   return (
     <form action={formAction} className="space-y-4">

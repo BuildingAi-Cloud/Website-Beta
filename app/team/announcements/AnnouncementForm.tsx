@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const inputClass =
   "w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 transition-colors";
@@ -32,12 +33,15 @@ export function AnnouncementForm({ hasBuilding }: { hasBuilding: boolean }) {
     setSubmitting(false);
     if (!res.ok) {
       const b = await res.json().catch(() => ({}));
-      setError(b.error || "Failed to post announcement.");
+      const msg = b.error || "Failed to post announcement.";
+      setError(msg);
+      toast.error("Couldn't post", { description: msg });
       return;
     }
     setTitle("");
     setBody("");
     setSuccess(true);
+    toast.success("Announcement posted", { description: "Email sent to all residents." });
     router.refresh();
     setTimeout(() => setSuccess(false), 4000);
   }
