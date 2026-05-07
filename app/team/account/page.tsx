@@ -5,7 +5,7 @@ export default async function TeamAccountPage() {
   const { authUser, appUser } = await requireUser();
 
   return (
-    <main className="px-6 py-10 max-w-2xl mx-auto">
+    <main className="px-4 md:px-6 py-8 md:py-10 max-w-2xl mx-auto">
       <div className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight">Account</h1>
         <p className="text-sm text-muted-foreground">{authUser.email} · {appUser.role.replace("_", " ")}</p>

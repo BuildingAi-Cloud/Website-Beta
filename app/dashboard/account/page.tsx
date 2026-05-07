@@ -6,7 +6,7 @@ export default async function AccountPage() {
   const { authUser, appUser } = await requireUser();
 
   return (
-    <main className="min-h-dvh px-6 py-10 max-w-2xl mx-auto">
+    <main className="min-h-dvh px-4 md:px-6 py-8 md:py-10 max-w-2xl mx-auto">
       <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
 
       <div className="mt-4 space-y-1">

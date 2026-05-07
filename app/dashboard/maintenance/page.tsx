@@ -20,7 +20,7 @@ export default async function MaintenancePage() {
   });
 
   return (
-    <main className="min-h-dvh px-6 py-10 max-w-3xl mx-auto">
+    <main className="min-h-dvh px-4 md:px-6 py-8 md:py-10 max-w-3xl mx-auto">
       <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Maintenance</h1>
 

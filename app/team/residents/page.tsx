@@ -10,7 +10,7 @@ export default async function TeamResidentsPage() {
 
   if (!appUser.buildingId) {
     return (
-      <main className="px-6 py-10 max-w-5xl mx-auto">
+      <main className="px-4 md:px-6 py-8 md:py-10 max-w-5xl mx-auto">
         <h1 className="text-3xl font-semibold tracking-tight">Residents</h1>
         <p className="mt-3 text-sm text-muted-foreground">No building assigned to your account.</p>
       </main>
@@ -38,7 +38,7 @@ export default async function TeamResidentsPage() {
   const canAdd = CAN_ADD.includes(appUser.role);
 
   return (
-    <main className="px-6 py-10 max-w-5xl mx-auto">
+    <main className="px-4 md:px-6 py-8 md:py-10 max-w-5xl mx-auto">
       <h1 className="text-3xl font-semibold tracking-tight">Residents</h1>
       <p className="mt-1 text-sm text-muted-foreground">{residents.length} in this building</p>
 

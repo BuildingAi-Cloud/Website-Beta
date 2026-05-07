@@ -17,10 +17,10 @@ export default async function TeamHome() {
   const isBM = appUser.role === "building_manager";
 
   return (
-    <main className="px-6 py-10 max-w-5xl mx-auto">
+    <main className="px-4 md:px-6 py-8 md:py-10 max-w-5xl mx-auto">
       <div className="space-y-1">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">{appUser.role.replace("_", " ")}</p>
-        <h1 className="text-4xl font-semibold tracking-tight">{building ? building.name : "Your team"}</h1>
+        <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{building ? building.name : "Your team"}</h1>
         {building && (
           <p className="text-sm text-muted-foreground">
             {building.address}, {building.city}, {building.state} {building.zipCode}
@@ -49,7 +49,7 @@ export default async function TeamHome() {
 function StatLink({ href, value, label }: { href: string | null; value: number; label: string }) {
   const inner = (
     <>
-      <div className="text-4xl font-semibold tabular-nums">{value}</div>
+      <div className="text-3xl md:text-4xl font-semibold tabular-nums">{value}</div>
       <div className="text-sm text-muted-foreground mt-1">{label}</div>
     </>
   );

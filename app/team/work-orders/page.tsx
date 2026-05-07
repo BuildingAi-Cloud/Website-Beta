@@ -7,8 +7,8 @@ export default async function TeamWorkOrdersPage() {
 
   if (!appUser.buildingId) {
     return (
-      <main className="px-6 py-10 max-w-5xl mx-auto">
-        <h1 className="text-3xl font-semibold tracking-tight">Work orders</h1>
+      <main className="px-4 md:px-6 py-8 md:py-10 max-w-5xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Work orders</h1>
         <p className="mt-3 text-sm text-muted-foreground">No building assigned to your account.</p>
       </main>
     );
@@ -28,7 +28,7 @@ export default async function TeamWorkOrdersPage() {
   const canAct = appUser.role === "facility_manager" || appUser.role === "building_manager";
 
   return (
-    <main className="px-6 py-10 max-w-5xl mx-auto">
+    <main className="px-4 md:px-6 py-8 md:py-10 max-w-5xl mx-auto">
       <div className="flex items-baseline gap-3">
         <h1 className="text-3xl font-semibold tracking-tight">Work orders</h1>
         {!canAct && (

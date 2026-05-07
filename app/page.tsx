@@ -80,23 +80,15 @@ export default async function Home({ searchParams }: { searchParams: SP }) {
 }
 
 function SiteHeader() {
-  // Header is intentionally public — no auth-aware reveal. Signed-in
-  // visitors keep the friendly marketing surface and get their portal
-  // CTA from the Hero ("Open dashboard / team / admin").
+  // Clean public header — no in-page anchor nav (the sections are right
+  // below the fold anyway, scrolling is the natural way to discover them).
+  // Just brand · theme toggle · sign in / get started.
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center" aria-label="BuildingSync home">
           <Wordmark className="text-base md:text-lg" />
         </Link>
-
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <a href="#pathways" className="text-muted-foreground hover:text-foreground transition-colors">For your role</a>
-          <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-          <a href="#principles" className="text-muted-foreground hover:text-foreground transition-colors">Pillars</a>
-          <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-          <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
-        </nav>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
