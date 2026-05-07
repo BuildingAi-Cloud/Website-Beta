@@ -93,7 +93,8 @@ model User {
   name            String?
   password        String?
   role            UserRole
-  accessRoles     UserRole[]
+  // accessRoles UserRole[] — DB column exists (nullable array) but Prisma
+  // can't represent a nullable scalar-array, so we leave it unmodeled.
   company         String?
   buildingId      String?
   unitId          String?
@@ -139,7 +140,7 @@ model Building {
   yearBuilt      Int?
   description    String?
   imageUrl       String?
-  amenities      String[]
+  // amenities String[] — DB column exists (nullable array); unmodeled.
   timezone       String
   isActive       Boolean       @default(true)
   enabledModules Json?
@@ -164,7 +165,7 @@ model Unit {
   squareFeet      Float?
   bedrooms        Int?
   bathrooms       Float?
-  amenities       String[]
+  // amenities String[] — DB column exists (nullable array); unmodeled.
   currentTenant   String?
   occupancyStatus String   @default("vacant")
   rentAmount      Float?
