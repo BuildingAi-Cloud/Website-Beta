@@ -12,7 +12,8 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { sendEmail } from "../lib/email";
+// Dynamic-imported below so dotenv has run before lib/email reads
+// process.env.RESEND_API_KEY at module load.
 
 const APP_URL = process.env.APP_BASE_URL || "https://buildingsync.app";
 const ADMIN_URL = "https://admin.buildingsync.app";
@@ -50,6 +51,9 @@ async function main() {
     console.error("RESEND_API_KEY missing. Set it in .env.local or pass it via env.");
     process.exit(1);
   }
+
+  // Dynamic import after dotenv config so lib/email captures RESEND_API_KEY.
+  const { sendEmail } = await import("../lib/email");
 
   for (const admin of ADMINS) {
     const { subject, html, text } = buildInvite(admin.name, admin.email);
