@@ -65,7 +65,7 @@ export default async function Home({ searchParams }: { searchParams: SP }) {
   return (
     <>
       <SiteHeader />
-      <main className="pt-16 md:pt-20">
+      <main>
         <Hero portalUrl={portalUrl} portalLabel={portalLabel} />
         <Pathways />
         <ProductHighlights />
@@ -84,7 +84,7 @@ function SiteHeader() {
   // below the fold anyway, scrolling is the natural way to discover them).
   // Just brand · theme toggle · sign in / get started.
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border/40 bg-background/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center" aria-label="BuildingSync home">
           <Wordmark className="text-base md:text-lg" />

@@ -21,15 +21,19 @@ export function BetaBanner() {
     window.localStorage.setItem(DISMISS_KEY, "1");
   }
 
+  // Page-level notification — sticky at the very top of the document so
+  // it lives ABOVE the header (which is sticky/fixed with a lower z-index).
+  // Scrolls with the page; once the user scrolls past the banner it stays
+  // pinned to the top of the viewport thanks to `sticky`.
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {show && (
         <motion.div
-          initial={{ y: -40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -40, opacity: 0 }}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="fixed top-0 left-0 right-0 z-[70] bg-accent text-accent-foreground"
+          className="sticky top-0 z-[70] bg-accent text-accent-foreground overflow-hidden"
           role="status"
           aria-live="polite"
         >
