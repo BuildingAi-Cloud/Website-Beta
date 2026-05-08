@@ -32,9 +32,17 @@ const TEST_USERS: Array<{ email: string; role: UserRole }> = [
   { email: "sinhaankur827+tenant@gmail.com", role: "tenant" },
 ];
 
-const PASSWORD = process.argv[2] || "BuildingSync!2026";
+// Password is required — no hardcoded default, since these test accounts
+// exist in production Supabase and a baked-in password ends up in git
+// history forever.
+const PASSWORD = process.argv[2] || process.env.TEST_USER_PASSWORD;
 
 async function main() {
+  if (!PASSWORD) {
+    console.error("Password required. Pass as first arg or set TEST_USER_PASSWORD in env.");
+    console.error("  npx tsx scripts/create-test-users.ts <password>");
+    process.exit(1);
+  }
   const building = await prisma.building.findFirst({ orderBy: { createdAt: "asc" } });
   if (!building) {
     console.error("No building found. Run: npx tsx prisma/seed.ts");
