@@ -82,7 +82,7 @@ async function main() {
     console.log(`${u.email.padEnd(40)} role=${u.role.padEnd(20)} created`);
   }
 
-  console.log(`\nAll passwords: ${PASSWORD}`);
+  console.log("\nDone. Use the password you supplied to sign in as each test account.");
   await prisma.$disconnect();
 }
 
