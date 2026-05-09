@@ -56,9 +56,20 @@ export default async function DashboardSettingsPage({
           </section>
         </div>
       )}
-      {active === "notifications" && <NotificationsTab email={authUser.email!} />}
+      {active === "notifications" && (
+        <NotificationsTab
+          email={authUser.email!}
+          initial={{
+            email: appUser.notifyEmail,
+            sms: appUser.notifySms,
+            inApp: appUser.notifyInApp,
+          }}
+        />
+      )}
       {active === "billing" && <BillingTab role={appUser.role} buildingName={building?.name ?? null} />}
-      {active === "privacy" && <PrivacyTab email={authUser.email!} locale={locale} />}
+      {active === "privacy" && (
+        <PrivacyTab email={authUser.email!} locale={locale} archived={Boolean(appUser.archivedAt)} />
+      )}
       {active === "system" && <SystemTab locale={locale} buildVersion="r1.beta" />}
     </SettingsShell>
   );

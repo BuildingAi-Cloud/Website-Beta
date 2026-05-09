@@ -36,6 +36,7 @@ export function SettingsShell({
   backLabel,
   role,
   active,
+  licenseHref,
   children,
 }: {
   basePath: string; // e.g. "/team/settings", "/dashboard/settings"
@@ -43,6 +44,8 @@ export function SettingsShell({
   backLabel: string;
   role: string;
   active: SettingsTab;
+  // Optional — only BM/admin surfaces show a License link.
+  licenseHref?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -62,7 +65,15 @@ export function SettingsShell({
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">{roleLabel(role)}</p>
         <div className="mt-3">
-          <Pill className="text-accent border-accent/40 bg-accent/10">License</Pill>
+          {licenseHref ? (
+            <Link href={licenseHref} aria-label="View license">
+              <Pill className="text-accent border-accent/40 bg-accent/10 hover:bg-accent/15 transition-colors cursor-pointer">
+                License →
+              </Pill>
+            </Link>
+          ) : (
+            <Pill className="text-muted-foreground border-border bg-muted/40">License</Pill>
+          )}
         </div>
       </div>
 

@@ -40,6 +40,7 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
   if (appUser.role === "building_manager") {
     items.push({ href: "/team/access-requests", label: "Access" });
     items.push({ href: "/team/audit-log", label: "Audit log" });
+    items.push({ href: "/team/license", label: "License" });
   }
 
   return (

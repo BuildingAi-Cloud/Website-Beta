@@ -49,9 +49,20 @@ export default async function PlatformSettingsPage({
           </section>
         </div>
       )}
-      {active === "notifications" && <NotificationsTab email={authUser.email!} />}
+      {active === "notifications" && (
+        <NotificationsTab
+          email={authUser.email!}
+          initial={{
+            email: appUser.notifyEmail,
+            sms: appUser.notifySms,
+            inApp: appUser.notifyInApp,
+          }}
+        />
+      )}
       {active === "billing" && <BillingTab role={appUser.role} buildingName={null} />}
-      {active === "privacy" && <PrivacyTab email={authUser.email!} locale={locale} />}
+      {active === "privacy" && (
+        <PrivacyTab email={authUser.email!} locale={locale} archived={Boolean(appUser.archivedAt)} />
+      )}
       {active === "system" && <SystemTab locale={locale} buildVersion="r1.beta" />}
     </SettingsShell>
   );

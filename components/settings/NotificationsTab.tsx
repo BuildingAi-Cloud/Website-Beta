@@ -1,73 +1,130 @@
-// Notifications settings panel. R1 sends a fixed set of transactional
-// emails (welcome, password reset, work-order updates that mention you,
-// announcements you authored). Per-channel toggles need a new
-// NotificationPreference table — that lands later. For now we surface
-// what's currently sent so users aren't confused.
+"use client";
 
-const CURRENT_EMAILS: { title: string; description: string }[] = [
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { saveNotificationPreferences } from "@/lib/settings-actions";
+
+// Per-channel notification preferences. Email + In-app are honored
+// today (Resend is wired); SMS toggle is recorded but no provider is
+// hooked up yet — we keep the toggle so the UI is ready when SMS lands.
+
+type Channel = {
+  key: "email" | "sms" | "in_app";
+  label: string;
+  hint: string;
+  available: boolean;
+};
+
+const CHANNELS: Channel[] = [
   {
-    title: "Welcome & sign-in",
-    description: "Account confirmation and password-reset links via Resend.",
+    key: "email",
+    label: "Email notifications",
+    hint: "Announcements, work-order updates, deliveries — sent via Resend.",
+    available: true,
   },
   {
-    title: "Announcements",
-    description: "Notices your building team posts, scoped to your audience.",
+    key: "sms",
+    label: "SMS notifications",
+    hint: "Reserved for emergencies. SMS provider lands in a future release.",
+    available: false,
   },
   {
-    title: "Maintenance updates",
-    description: "Status changes on work orders you opened.",
-  },
-  {
-    title: "Deliveries",
-    description: "When the concierge logs a package with your unit's pickup code.",
+    key: "in_app",
+    label: "In-app notifications",
+    hint: "Surfaces in the bell menu while you're using BuildingSync.",
+    available: true,
   },
 ];
 
-export function NotificationsTab({ email }: { email: string }) {
+export function NotificationsTab({
+  email,
+  initial,
+}: {
+  email: string;
+  initial: { email: boolean; sms: boolean; inApp: boolean };
+}) {
+  const [prefs, setPrefs] = useState(initial);
+  const [pending, startTransition] = useTransition();
+
+  function toggle(key: Channel["key"]) {
+    setPrefs((prev) => {
+      if (key === "email") return { ...prev, email: !prev.email };
+      if (key === "sms") return { ...prev, sms: !prev.sms };
+      return { ...prev, inApp: !prev.inApp };
+    });
+  }
+
+  function save() {
+    const fd = new FormData();
+    fd.set("email", prefs.email ? "1" : "0");
+    fd.set("sms", prefs.sms ? "1" : "0");
+    fd.set("inApp", prefs.inApp ? "1" : "0");
+    startTransition(async () => {
+      const res = await saveNotificationPreferences(fd);
+      if (res.ok) toast.success("Preferences saved");
+      else toast.error("Couldn't save", { description: res.error });
+    });
+  }
+
   return (
     <div className="space-y-6">
       <section className="bg-card border border-border rounded-md p-5">
-        <h2 className="text-base font-semibold">Email channel</h2>
+        <h2 className="text-base font-semibold">Notification preferences</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          We currently send transactional notifications to{" "}
-          <span className="font-mono text-foreground">{email}</span>. Per-event toggles land
-          alongside the in-app notifications hub.
+          We send transactional notifications to{" "}
+          <span className="font-mono text-foreground">{email}</span>. Toggle channels below.
         </p>
 
         <ul className="mt-4 space-y-2">
-          {CURRENT_EMAILS.map((item) => (
-            <li
-              key={item.title}
-              className="flex items-start justify-between gap-4 border border-border rounded-md px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="font-medium">{item.title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
-              </div>
-              <span className="shrink-0 text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10">
-                On
-              </span>
-            </li>
-          ))}
+          {CHANNELS.map((channel) => {
+            const checked =
+              channel.key === "email" ? prefs.email :
+              channel.key === "sms" ? prefs.sms :
+              prefs.inApp;
+            return (
+              <li key={channel.key} className="border border-border rounded-md px-4 py-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(channel.key)}
+                    className="mt-0.5 w-5 h-5 rounded accent-accent shrink-0 cursor-pointer"
+                    aria-label={channel.label}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{channel.label}</span>
+                      {!channel.available && (
+                        <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border border-amber-500/30 text-amber-700 dark:text-amber-400 bg-amber-500/10">
+                          Provider pending
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{channel.hint}</div>
+                  </div>
+                </label>
+              </li>
+            );
+          })}
         </ul>
+
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending}
+            className="px-5 py-2 rounded-md bg-accent text-accent-foreground font-semibold hover:bg-accent/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm"
+          >
+            {pending ? "Saving…" : "Save notifications"}
+          </button>
+        </div>
       </section>
 
       <section className="bg-card border border-border rounded-md p-5">
         <h2 className="text-base font-semibold">Mobile push</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Coming with the next PWA notification permission flow. When you install the app to
-          your home screen we&apos;ll prompt for permission.
-        </p>
-      </section>
-
-      <section className="bg-card border border-border rounded-md p-5">
-        <h2 className="text-base font-semibold">SMS</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Not enabled in R1. Reach out to{" "}
-          <a href="mailto:info@buildingsync.app" className="text-accent hover:underline">
-            info@buildingsync.app
-          </a>{" "}
-          if your building needs SMS for emergencies.
+          Web Push lands alongside the next PWA permission flow — when you install BuildingSync to
+          your home screen we&apos;ll prompt for permission and add the toggle here.
         </p>
       </section>
     </div>
