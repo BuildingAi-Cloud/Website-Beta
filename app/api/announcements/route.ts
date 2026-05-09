@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getOrCreateAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmailFireAndForget, announcementBroadcastEmail } from "@/lib/email";
+import { sendPushToUsers } from "@/lib/push";
 
 const Body = z.object({
   title: z.string().trim().min(1).max(200),
@@ -69,19 +70,35 @@ export async function POST(request: NextRequest) {
   }
 
   const [recipients, building] = await Promise.all([
-    prisma.user.findMany({ where: recipientFilter, select: { email: true } }),
+    prisma.user.findMany({ where: recipientFilter, select: { id: true, email: true, notifyEmail: true } }),
     prisma.building.findUnique({ where: { id: appUser.buildingId }, select: { name: true } }),
   ]);
   if (recipients.length > 0) {
-    sendEmailFireAndForget({
-      to: recipients.map((r) => r.email),
-      ...announcementBroadcastEmail({
-        title: announcement.title,
-        body: announcement.body,
-        buildingName: building?.name ?? null,
-        authorLabel: appUser.name || appUser.email,
-      }),
-    });
+    const emailRecipients = recipients.filter((r) => r.notifyEmail).map((r) => r.email);
+    if (emailRecipients.length > 0) {
+      sendEmailFireAndForget({
+        to: emailRecipients,
+        ...announcementBroadcastEmail({
+          title: announcement.title,
+          body: announcement.body,
+          buildingName: building?.name ?? null,
+          authorLabel: appUser.name || appUser.email,
+        }),
+      });
+    }
+
+    // Fire-and-forget Web Push to every recipient with an active
+    // subscription. Honored even when notifyEmail is off — push is a
+    // separate channel.
+    void sendPushToUsers(
+      recipients.map((r) => r.id),
+      {
+        title: building?.name ? `${building.name}: ${announcement.title}` : announcement.title,
+        body: announcement.body.length > 200 ? `${announcement.body.slice(0, 197)}…` : announcement.body,
+        url: "/dashboard/announcements",
+        tag: `announcement-${announcement.id}`,
+      },
+    ).catch((err) => console.error("[announcements] sendPushToUsers failed", err));
   }
 
   return NextResponse.json(

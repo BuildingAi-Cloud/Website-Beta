@@ -65,6 +65,7 @@ export default async function TeamSettingsPage({
             sms: appUser.notifySms,
             inApp: appUser.notifyInApp,
           }}
+          vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
         />
       )}
       {active === "billing" && <BillingTab role={appUser.role} buildingName={building?.name ?? null} />}

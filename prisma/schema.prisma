@@ -157,6 +157,7 @@ model User {
   posts             Post[]           @relation("PostAuthor")
   deliveriesIn      Delivery[]       @relation("DeliveryRecipient")
   deliveriesLogged  Delivery[]       @relation("DeliveryLogger")
+  pushSubscriptions PushSubscription[]
 
   @@index([buildingId])
   @@index([role])
@@ -559,4 +560,22 @@ model License {
   building Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@index([buildingId])
+}
+
+// Web Push subscription per user/device. Endpoint is the push service
+// URL; p256dh + auth are the keys we encrypt payloads with. One row
+// per browser/device combination — users on iPhone + laptop get two.
+model PushSubscription {
+  id           String    @id
+  userId       String
+  endpoint     String    @unique
+  p256dh       String
+  auth         String
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

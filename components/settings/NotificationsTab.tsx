@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { saveNotificationPreferences } from "@/lib/settings-actions";
+import { PushPermissionToggle } from "./PushPermissionToggle";
 
 // Per-channel notification preferences. Email + In-app are honored
 // today (Resend is wired); SMS toggle is recorded but no provider is
@@ -39,9 +40,11 @@ const CHANNELS: Channel[] = [
 export function NotificationsTab({
   email,
   initial,
+  vapidPublicKey,
 }: {
   email: string;
   initial: { email: boolean; sms: boolean; inApp: boolean };
+  vapidPublicKey: string | null;
 }) {
   const [prefs, setPrefs] = useState(initial);
   const [pending, startTransition] = useTransition();
@@ -121,11 +124,14 @@ export function NotificationsTab({
       </section>
 
       <section className="bg-card border border-border rounded-md p-5">
-        <h2 className="text-base font-semibold">Mobile push</h2>
+        <h2 className="text-base font-semibold">Mobile + desktop push</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Web Push lands alongside the next PWA permission flow — when you install BuildingSync to
-          your home screen we&apos;ll prompt for permission and add the toggle here.
+          Get notifications even when BuildingSync isn&apos;t open. iOS requires the PWA to be
+          installed to your home screen first.
         </p>
+        <div className="mt-4">
+          <PushPermissionToggle vapidPublicKey={vapidPublicKey} />
+        </div>
       </section>
     </div>
   );

@@ -5,7 +5,7 @@
 // abort the install), network-first for navigation, fall through to the
 // offline page when there's no network.
 
-const CACHE = "buildingsync-r1-v5";
+const CACHE = "buildingsync-r1-v6";
 const SHELL = ["/offline"];
 
 // Cache a list of URLs but tolerate any individual failure — addAll() is
@@ -30,6 +30,47 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
+  );
+});
+
+// Web Push: incoming push from our /api/push/test or event-driven
+// senders (announcements, deliveries, work-order updates). Payload is
+// JSON: { title, body, url?, tag? }. We surface as a system
+// notification; clicking focuses the existing PWA window if open or
+// opens a new one at the payload's url.
+self.addEventListener("push", (event) => {
+  let payload = { title: "BuildingSync", body: "You have a new update" };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch (_e) {
+    // Non-JSON payload — keep the defaults.
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: payload.tag || "buildingsync",
+      data: { url: payload.url || "/dashboard" },
+      renotify: false,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/dashboard";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) {
+        // Reuse an existing PWA window if one is already open.
+        if ("focus" in w && new URL(w.url).origin === self.location.origin) {
+          w.navigate(target);
+          return w.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    }),
   );
 });
 
