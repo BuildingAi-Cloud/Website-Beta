@@ -16,8 +16,19 @@ export function BetaBanner() {
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 flex items-center justify-center text-center text-xs sm:text-sm">
-        <p className="leading-snug">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-1.5 sm:py-2 flex items-center justify-center text-center text-xs sm:text-sm">
+        {/* Compact one-liner on mobile so it doesn't eat 3 rows of vertical
+            real estate; expanded copy from sm: up. */}
+        <p className="leading-snug sm:hidden">
+          <strong className="font-semibold">Beta.</strong>{" "}
+          <a
+            href="mailto:info@buildingsync.app"
+            className="underline underline-offset-2 hover:opacity-80 opacity-90"
+          >
+            Feedback
+          </a>
+        </p>
+        <p className="leading-snug hidden sm:block">
           <strong className="font-semibold">Early testing.</strong>{" "}
           <span className="opacity-90">
             BuildingSync is under active development — features may change or break. Not yet a live production service. Feedback:{" "}

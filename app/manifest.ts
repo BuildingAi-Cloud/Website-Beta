@@ -1,12 +1,17 @@
 import type { MetadataRoute } from "next";
 
+// Scoped to the post-login app: when the user opens the installed PWA,
+// they land on /dashboard (which auth-gates to /signin if their session
+// has lapsed — but inside the PWA, never the marketing site). scope is
+// kept at "/" so the in-PWA sign-in flow works without bouncing out
+// to the system browser.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: "/?source=pwa",
+    id: "/dashboard?source=pwa",
     name: "BuildingSync",
     short_name: "BuildingSync",
     description: "Property management for residents, tenants, and staff.",
-    start_url: "/?source=pwa",
+    start_url: "/dashboard?source=pwa",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Captures Android Chrome's beforeinstallprompt event so we can render our
 // own install button. Safari iOS never fires this — we detect iOS UA and
 // show the manual "Share → Add to Home Screen" hint instead.
+//
+// Scoped to post-login surfaces (/dashboard, /team, /platform). PWA is
+// the installed app for authenticated users; marketing pages don't need
+// the prompt cluttering them.
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -13,14 +18,23 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY = "bs-pwa-prompt-dismissed";
+const POST_LOGIN_PREFIXES = ["/dashboard", "/team", "/platform"];
 
 export function PwaInstallPrompt() {
+  const pathname = usePathname();
   const [show, setShow] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
 
+  const isPostLogin = POST_LOGIN_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Only surface inside the authenticated app — PWA is for post-login.
+    if (!isPostLogin) return;
 
     // Already dismissed in this browser? Don't show again.
     if (window.localStorage.getItem(DISMISS_KEY) === "1") return;
@@ -52,7 +66,7 @@ export function PwaInstallPrompt() {
       if (iosTimer) clearTimeout(iosTimer);
       window.removeEventListener("beforeinstallprompt", handler);
     };
-  }, []);
+  }, [isPostLogin]);
 
   function dismiss() {
     setShow(false);
