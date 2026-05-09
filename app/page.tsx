@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
 };
 
-type SP = Promise<{ go?: string }>;
+type SP = Promise<{ go?: string; source?: string }>;
 
 export default async function Home({ searchParams }: { searchParams: SP }) {
   const h = await headers();
@@ -66,7 +66,12 @@ export default async function Home({ searchParams }: { searchParams: SP }) {
           portalUrl = "/dashboard";
           portalLabel = "Open dashboard";
       }
-      if (params.go === "1") redirect(portalUrl);
+      // Old PWA installs have start_url=/?source=pwa from before the
+      // manifest moved to /dashboard?source=pwa. When an authed PWA
+      // user lands here, send them straight to their portal so they
+      // see the v2 app, not the marketing site. Explicit ?go=1
+      // (used by the post-signin redirect) does the same.
+      if (params.go === "1" || params.source === "pwa") redirect(portalUrl);
     }
   }
 

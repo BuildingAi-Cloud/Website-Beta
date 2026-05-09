@@ -83,7 +83,7 @@ export default async function PlatformDashboard() {
           </h2>
           <Link
             href="/platform/buildings/new"
-            className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors"
+            className="text-sm px-4 py-2 sm:px-3 sm:py-1.5 rounded-md border border-border hover:bg-muted transition-colors"
           >
             + New building
           </Link>

@@ -47,26 +47,26 @@ export default async function TeamUnitsPage() {
         {units.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No units yet. Add one above to start onboarding residents.</p>
         ) : (
-          <div className="mt-3 bg-card border border-border rounded-md overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="mt-3 bg-card border border-border rounded-md overflow-x-auto">
+            <table className="w-full min-w-120 text-sm">
               <thead className="text-xs uppercase tracking-wider text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-5 font-semibold">Unit</th>
-                  <th className="text-left py-3 px-5 font-semibold">Floor</th>
-                  <th className="text-right py-3 px-5 font-semibold">Rent</th>
-                  <th className="text-right py-3 px-5 font-semibold">Status</th>
+                  <th className="text-left py-3 px-4 sm:px-5 font-semibold">Unit</th>
+                  <th className="text-left py-3 px-4 sm:px-5 font-semibold">Floor</th>
+                  <th className="text-right py-3 px-4 sm:px-5 font-semibold">Rent</th>
+                  <th className="text-right py-3 px-4 sm:px-5 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {units.map((u) => (
                   <tr key={u.id}>
-                    <td className="py-3 px-5 font-medium">Unit {u.unitNumber}</td>
-                    <td className="py-3 px-5 text-muted-foreground">{u.floor ?? "—"}</td>
-                    <td className="py-3 px-5 text-right tabular-nums">
+                    <td className="py-3 px-4 sm:px-5 font-medium whitespace-nowrap">Unit {u.unitNumber}</td>
+                    <td className="py-3 px-4 sm:px-5 text-muted-foreground">{u.floor ?? "—"}</td>
+                    <td className="py-3 px-4 sm:px-5 text-right tabular-nums whitespace-nowrap">
                       {u.rentAmount ? `$${Number(u.rentAmount).toLocaleString()}` : "—"}
                     </td>
-                    <td className="py-3 px-5 text-right">
-                      <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm border ${u._count.users > 0 ? "bg-accent/10 text-accent border-accent/30" : "bg-muted/30 text-muted-foreground border-border"}`}>
+                    <td className="py-3 px-4 sm:px-5 text-right">
+                      <span className={`text-[11px] sm:text-[10px] uppercase tracking-wider px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-sm border whitespace-nowrap ${u._count.users > 0 ? "bg-accent/10 text-accent border-accent/30" : "bg-muted/30 text-muted-foreground border-border"}`}>
                         {u._count.users > 0 ? "occupied" : "available"}
                       </span>
                     </td>

@@ -92,7 +92,7 @@ export function IncidentRow({ incident, canResolve }: Props) {
                 type="button"
                 disabled={pending}
                 onClick={() => changeStatus(a.status)}
-                className={`text-xs px-3 py-1.5 rounded-md transition-colors disabled:opacity-60 ${
+                className={`text-xs px-4 py-2 sm:px-3 sm:py-1.5 rounded-md transition-colors disabled:opacity-60 ${
                   a.tone === "primary"
                     ? "bg-accent text-accent-foreground hover:bg-accent/90"
                     : "border border-border hover:border-accent hover:text-accent"

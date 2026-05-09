@@ -36,7 +36,7 @@ export function VerificationActions({ userId, email }: { userId: string; email: 
         <button
           type="submit"
           disabled={pending}
-          className="px-3 py-1.5 rounded-md text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-60"
+          className="px-4 py-2 sm:px-3 sm:py-1.5 rounded-md text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-60"
         >
           {approvePending ? "Saving…" : "Approve"}
         </button>
@@ -56,7 +56,7 @@ export function VerificationActions({ userId, email }: { userId: string; email: 
               onConfirm: () => rejectFormRef.current?.requestSubmit(),
             })
           }
-          className="px-3 py-1.5 rounded-md text-sm font-medium border border-border hover:border-rose-500/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors disabled:opacity-60"
+          className="px-4 py-2 sm:px-3 sm:py-1.5 rounded-md text-sm font-medium border border-border hover:border-rose-500/50 hover:text-rose-600 dark:hover:text-rose-400 transition-colors disabled:opacity-60"
         >
           {rejectPending ? "Saving…" : "Reject"}
         </button>

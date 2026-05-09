@@ -26,7 +26,7 @@ export function StatusPill({
 }) {
   return (
     <span
-      className={`inline-flex items-center text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-sm border ${TONES[tone]} ${className}`}
+      className={`inline-flex items-center text-[11px] sm:text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 sm:px-2 sm:py-0.5 rounded-sm border ${TONES[tone]} ${className}`}
     >
       {label}
     </span>

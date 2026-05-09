@@ -119,7 +119,7 @@ export default async function AccessRequestsPage() {
                   href={u.role === "facility_manager" || u.role === "concierge"
                     ? "/team/staff"
                     : "/team/residents"}
-                  className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors"
+                  className="text-sm px-4 py-2 sm:px-3 sm:py-1.5 rounded-md border border-border bg-background hover:bg-muted active:bg-muted transition-colors"
                 >
                   Review →
                 </Link>

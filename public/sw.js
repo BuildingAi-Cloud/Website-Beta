@@ -5,7 +5,7 @@
 // abort the install), network-first for navigation, fall through to the
 // offline page when there's no network.
 
-const CACHE = "buildingsync-r1-v3";
+const CACHE = "buildingsync-r1-v5";
 const SHELL = ["/offline"];
 
 // Cache a list of URLs but tolerate any individual failure — addAll() is
