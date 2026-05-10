@@ -151,7 +151,7 @@ function Hero({ portalUrl, portalLabel }: { portalUrl: string | null; portalLabe
 
       <div className="mt-6 flex flex-wrap gap-2">
         <span className="inline-flex items-center px-3 py-1.5 rounded-full border border-accent/40 bg-accent/10 text-xs font-mono uppercase tracking-widest text-accent">
-          MVP · pilots open
+          Pilot · 5 buildings · 90 days free
         </span>
         {["Self-serve onboarding", "Cancel anytime", "Privacy-first by design"].map((proof) => (
           <span
@@ -168,14 +168,14 @@ function Hero({ portalUrl, portalLabel }: { portalUrl: string | null; portalLabe
           <LinkButton href={portalUrl}>{portalLabel}</LinkButton>
         ) : (
           <>
-            <LinkButton href="/signup">Get started →</LinkButton>
-            <LinkButton href="#pricing" variant="outline">See pricing</LinkButton>
+            <LinkButton href="/signup">Start a free pilot →</LinkButton>
+            <LinkButton href="/walkthrough" variant="outline">Book a 15-min walkthrough</LinkButton>
           </>
         )}
       </div>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Essential plan from $2.50 / unit / month. No credit card to explore. Everything before R3 is MVP — native iOS + Android apps ship with R3.
+        Free 90-day pilot for the first 5 residential buildings. No credit card. Includes white-glove setup. After 90 days: $2.50 / unit / month or cancel — your call. Everything before R3 is MVP; native iOS + Android apps ship with R3.
       </p>
     </section>
   );
@@ -401,6 +401,30 @@ function Pricing() {
       <p className="mt-3 max-w-3xl font-mono text-xs md:text-sm text-muted-foreground leading-relaxed">
         Per-unit pricing. No setup fees. Cancel anytime.
       </p>
+
+      <div className="mt-6 bg-accent/10 border border-accent/40 rounded-lg p-4 md:p-5">
+        <div className="flex items-start gap-3 flex-wrap">
+          <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded-full bg-accent text-accent-foreground shrink-0">
+            Pilot
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm md:text-base font-semibold text-foreground">
+              Free 90 days for the first 5 residential buildings.
+            </p>
+            <p className="mt-1 text-xs md:text-sm text-muted-foreground leading-relaxed">
+              No credit card. White-glove setup (we do it with you in a 30-min screen-share). After 90 days you pay the listed price or cancel — your call. Email{" "}
+              <a href="mailto:info@buildingsync.app?subject=BuildingSync%20pilot" className="text-accent hover:underline">
+                info@buildingsync.app
+              </a>{" "}
+              with your building name and unit count, or{" "}
+              <Link href="/walkthrough" className="text-accent hover:underline">
+                book a walkthrough
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
         {TIERS.map((t) => (
