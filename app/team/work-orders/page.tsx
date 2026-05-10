@@ -2,6 +2,7 @@ import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { EmptyState } from "@/components/EmptyState";
 import { WorkOrderRow } from "./WorkOrderRow";
+import { AiTriageBanner } from "@/components/AiTriageBanner";
 
 export default async function TeamWorkOrdersPage() {
   const { appUser } = await requireTeam();
@@ -42,6 +43,12 @@ export default async function TeamWorkOrdersPage() {
         )}
       </div>
       <p className="mt-1 text-sm text-muted-foreground">{workOrders.length} total</p>
+
+      {canAct && workOrders.some((w) => w.status === "open" || w.status === "in_progress") && (
+        <div className="mt-6">
+          <AiTriageBanner />
+        </div>
+      )}
 
       {workOrders.length === 0 ? (
         <div className="mt-8">
