@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
 import { roleLabel } from "@/components/RoleBadge";
 import { formatRelative } from "@/lib/format";
+import { InviteCodePanel } from "./InviteCodePanel";
 
 // BM-only review surface for "who has access to this building".
 // Surfaces three queues:
@@ -27,7 +28,13 @@ export default async function AccessRequestsPage() {
 
   const since = new Date(Date.now() - THIRTY_DAYS_MS);
 
-  const [pendingVerifications, recentResidents, activeStaff] = await Promise.all([
+  const [building, pendingVerifications, recentResidents, activeStaff] = await Promise.all([
+    prisma.building
+      .findUnique({
+        where: { id: appUser.buildingId },
+        select: { inviteCode: true, inviteCodeUpdatedAt: true },
+      })
+      .catch(() => null),
     prisma.user.findMany({
       where: {
         buildingId: appUser.buildingId,
@@ -85,6 +92,14 @@ export default async function AccessRequestsPage() {
           on the <Link href="/team/staff" className="text-accent hover:underline">staff</Link> and
           {" "}<Link href="/team/residents" className="text-accent hover:underline">residents</Link> pages.
         </p>
+      </div>
+
+      <div className="mt-8">
+        <InviteCodePanel
+          initialCode={building?.inviteCode ?? null}
+          initialUpdatedAt={building?.inviteCodeUpdatedAt ?? null}
+          signupBaseUrl={process.env.APP_BASE_URL || "https://buildingsync.app"}
+        />
       </div>
 
       <section className="mt-10">

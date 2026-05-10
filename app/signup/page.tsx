@@ -1,10 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { AuthShell } from "@/components/AuthShell";
+
+function normalizeInviteCode(input: string): string {
+  return input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
 
 function passwordStrength(pw: string): { score: 0 | 1 | 2 | 3 | 4; label: string } {
   if (pw.length === 0) return { score: 0, label: "" };
@@ -32,10 +36,18 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [isHuman, setIsHuman] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   // Honeypot field — bots typically fill it; humans never see it.
   const [companyHoneypot, setCompanyHoneypot] = useState("");
+
+  // Pull ?code= from the URL on mount so a BM-shared link prefills it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) setInviteCode(normalizeInviteCode(code));
+  }, []);
 
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -62,12 +74,19 @@ export default function SignUpPage() {
     setError(null);
     setLoading(true);
 
+    const code = inviteCode ? normalizeInviteCode(inviteCode) : null;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { full_name: name, phone: phone || null },
+        data: {
+          full_name: name,
+          phone: phone || null,
+          // Picked up server-side by getOrCreateAppUser to auto-link
+          // the new account to the right building on first auth.
+          invite_code: code && code.length === 6 ? code : null,
+        },
       },
     });
     setLoading(false);
@@ -115,6 +134,7 @@ export default function SignUpPage() {
                     <StepProfile
                       name={name} setName={setName}
                       phone={phone} setPhone={setPhone}
+                      inviteCode={inviteCode} setInviteCode={setInviteCode}
                     />
                   )}
                   {step === 3 && (
@@ -296,8 +316,9 @@ function StepAccount(props: {
 function StepProfile(props: {
   name: string; setName: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
+  inviteCode: string; setInviteCode: (v: string) => void;
 }) {
-  const { name, setName, phone, setPhone } = props;
+  const { name, setName, phone, setPhone, inviteCode, setInviteCode } = props;
   return (
     <>
       <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Tell us about you</h1>
@@ -321,6 +342,24 @@ function StepProfile(props: {
           value={phone} onChange={(e) => setPhone(e.target.value)}
           className={inputClass}
         />
+      </div>
+
+      <div>
+        <label htmlFor="inviteCode" className="block text-sm font-medium text-foreground mb-1.5">
+          Building invite code <span className="text-muted-foreground/85 font-normal">(optional)</span>
+        </label>
+        <input
+          id="inviteCode" type="text" maxLength={6} placeholder="e.g. ABCDEF"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+          autoCapitalize="characters"
+          autoComplete="off"
+          className={`${inputClass} font-mono tracking-widest uppercase`}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Got a code from your Building Manager? Enter it to auto-link your account. Otherwise leave blank
+          and your BM can add you manually later.
+        </p>
       </div>
     </>
   );

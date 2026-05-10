@@ -186,6 +186,8 @@ model Building {
   timezone       String
   isActive       Boolean       @default(true)
   enabledModules Json?
+  inviteCode     String?       @unique
+  inviteCodeUpdatedAt DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -202,6 +204,7 @@ model Building {
   posts         Post[]
   deliveries    Delivery[]
   license       License?
+  notices       Notice[]
 }
 
 model Unit {
@@ -578,4 +581,31 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Ontario RTA legal notices (N4 / N5 / N12 / N13 etc). One row per
+// served notice; payload holds type-specific fields so adding new
+// notice types doesn't require a migration. Status flow: draft →
+// served → resolved | withdrawn.
+model Notice {
+  id             String    @id
+  buildingId     String
+  leaseId        String?
+  tenantUserId   String?
+  createdById    String
+  type           String    // "N4" | "N5" | "N12" | ...
+  status         String    @default("draft") // draft | served | resolved | withdrawn
+  payload        Json
+  servedAt       DateTime?
+  servedMethod   String?   // in_person | mail | email | door
+  remediationBy  DateTime? // e.g. N4 14-day pay-or-vacate deadline
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId, status])
+  @@index([leaseId])
+  @@index([tenantUserId])
 }
