@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { AuthShell } from "@/components/AuthShell";
+import { Turnstile, isTurnstileConfigured } from "@/components/Turnstile";
 
 function normalizeInviteCode(input: string): string {
   return input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
@@ -53,11 +54,21 @@ export default function SignUpPage() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Cloudflare Turnstile token (if configured). Forwarded to Supabase
+  // Auth's native CAPTCHA support — Supabase verifies server-side.
+  const captchaEnabled = isTurnstileConfigured();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const handleCaptcha = useCallback((token: string) => setCaptchaToken(token), []);
+
   const strength = useMemo(() => passwordStrength(password), [password]);
 
   const canStepOneNext = email.trim().length > 0 && strength.score >= 1;
   const canStepTwoNext = name.trim().length > 0;
-  const canSubmit = isHuman && agreedTerms && companyHoneypot === "";
+  const canSubmit =
+    isHuman &&
+    agreedTerms &&
+    companyHoneypot === "" &&
+    (!captchaEnabled || Boolean(captchaToken));
 
   function next() {
     if (step === 1 && canStepOneNext) setStep(2);
@@ -87,6 +98,7 @@ export default function SignUpPage() {
           // the new account to the right building on first auth.
           invite_code: code && code.length === 6 ? code : null,
         },
+        ...(captchaToken ? { captchaToken } : {}),
       },
     });
     setLoading(false);
@@ -138,12 +150,19 @@ export default function SignUpPage() {
                     />
                   )}
                   {step === 3 && (
-                    <StepVerify
-                      isHuman={isHuman} setIsHuman={setIsHuman}
-                      agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms}
-                      companyHoneypot={companyHoneypot} setCompanyHoneypot={setCompanyHoneypot}
-                      email={email}
-                    />
+                    <>
+                      <StepVerify
+                        isHuman={isHuman} setIsHuman={setIsHuman}
+                        agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms}
+                        companyHoneypot={companyHoneypot} setCompanyHoneypot={setCompanyHoneypot}
+                        email={email}
+                      />
+                      {captchaEnabled && (
+                        <div className="flex justify-center pt-2">
+                          <Turnstile onToken={handleCaptcha} />
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {error && (

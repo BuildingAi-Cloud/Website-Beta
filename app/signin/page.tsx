@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { AuthShell } from "@/components/AuthShell";
+import { Turnstile, isTurnstileConfigured } from "@/components/Turnstile";
 import { resolvePortalUrl } from "./actions";
 
 const inputClass =
@@ -81,11 +82,26 @@ function SignInPageInner() {
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Cloudflare Turnstile token. Forwarded to Supabase Auth's native
+  // CAPTCHA support — Supabase verifies it server-side before
+  // accepting the credential check.
+  const captchaEnabled = isTurnstileConfigured();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const handleCaptcha = useCallback((token: string) => setCaptchaToken(token), []);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (captchaEnabled && !captchaToken) {
+      setError("Verifying you're human… please wait a moment and try again.");
+      return;
+    }
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     setLoading(false);
     if (error) {
       const code = (error as { code?: string }).code;
@@ -125,11 +141,16 @@ function SignInPageInner() {
 
   async function onReset(e: React.FormEvent) {
     e.preventDefault();
+    if (captchaEnabled && !captchaToken) {
+      setResetError("Verifying you're human… please wait a moment and try again.");
+      return;
+    }
     setResetError(null);
     setResetMessage(null);
     setResetLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: `${window.location.origin}/auth/reset`,
+      ...(captchaToken ? { captchaToken } : {}),
     });
     setResetLoading(false);
     if (error) {
@@ -213,6 +234,12 @@ function SignInPageInner() {
                   </motion.div>
                 )}
 
+                {captchaEnabled && (
+                  <div className="flex justify-center">
+                    <Turnstile onToken={handleCaptcha} />
+                  </div>
+                )}
+
                 <button type="submit" disabled={loading} className={primaryButton}>
                   {loading ? "Signing in…" : "Sign in"}
                 </button>
@@ -253,6 +280,12 @@ function SignInPageInner() {
                 {resetMessage && (
                   <div role="status" className="rounded-md border border-accent/40 bg-accent/5 px-3 py-2 text-sm text-accent">
                     {resetMessage}
+                  </div>
+                )}
+
+                {captchaEnabled && (
+                  <div className="flex justify-center">
+                    <Turnstile onToken={handleCaptcha} />
                   </div>
                 )}
 
