@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
@@ -140,6 +140,153 @@ export async function addResident(_prev: unknown, formData: FormData): Promise<R
 function generatePassword(): string {
   // 14-char alphanumeric, easy to share verbally / over chat.
   return randomBytes(12).toString("base64").replace(/[+/=lI0Oo]/g, "").slice(0, 14);
+}
+
+// ─── Leases ──────────────────────────────────────────────────────────────
+
+const LeaseBody = z.object({
+  tenantId: z.string().min(1),
+  unitId: z.string().min(1),
+  leaseStartDate: z.string().min(1),
+  leaseEndDate: z.string().min(1),
+  rentAmountMonthly: z.coerce.number().positive().max(1_000_000),
+  securityDeposit: z.coerce.number().min(0).max(1_000_000).optional().nullable(),
+  leaseType: z.enum(["fixed_term", "month_to_month"]).default("fixed_term"),
+});
+
+type LeaseResult = { ok: true; leaseId: string } | { ok: false; error: string };
+
+// Active lease per tenant+unit. Required for the rent flow (Stripe checkout
+// reads rentAmountMonthly) and for landlord-tenant notice forms (N4/N12
+// pre-fill from the latest lease).
+export async function addLease(_prev: unknown, formData: FormData): Promise<LeaseResult> {
+  const session = await requireTeam();
+  if (!ALLOWED_ROLES.includes(session.appUser.role)) {
+    return { ok: false, error: "Only Building Managers and Facility Managers can record leases." };
+  }
+  if (!session.appUser.buildingId) {
+    return { ok: false, error: "Your account is not linked to a building." };
+  }
+
+  const parsed = LeaseBody.safeParse({
+    tenantId: formData.get("tenantId"),
+    unitId: formData.get("unitId"),
+    leaseStartDate: formData.get("leaseStartDate"),
+    leaseEndDate: formData.get("leaseEndDate"),
+    rentAmountMonthly: formData.get("rentAmountMonthly"),
+    securityDeposit: formData.get("securityDeposit") || null,
+    leaseType: (formData.get("leaseType") as string) || "fixed_term",
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+  }
+  const { tenantId, unitId, leaseStartDate, leaseEndDate, rentAmountMonthly, securityDeposit, leaseType } = parsed.data;
+
+  const start = new Date(leaseStartDate);
+  const end = new Date(leaseEndDate);
+  if (end <= start) {
+    return { ok: false, error: "End date must be after start date." };
+  }
+
+  const [tenant, unit] = await Promise.all([
+    prisma.user.findUnique({ where: { id: tenantId }, select: { id: true, buildingId: true, role: true, email: true } }),
+    prisma.unit.findUnique({ where: { id: unitId }, select: { id: true, buildingId: true } }),
+  ]);
+  if (!tenant || tenant.buildingId !== session.appUser.buildingId) {
+    return { ok: false, error: "Tenant not found in your building." };
+  }
+  if (!unit || unit.buildingId !== session.appUser.buildingId) {
+    return { ok: false, error: "Unit not found in your building." };
+  }
+  if (tenant.role !== "tenant" && tenant.role !== "resident") {
+    return { ok: false, error: "Leases can only be recorded for residents and tenants." };
+  }
+
+  const lease = await prisma.lease.create({
+    data: {
+      id: randomUUID(),
+      buildingId: session.appUser.buildingId,
+      tenantId,
+      unitId,
+      leaseStartDate: start,
+      leaseEndDate: end,
+      rentAmountMonthly,
+      securityDeposit: securityDeposit ?? null,
+      leaseType,
+      status: "active",
+    },
+  });
+
+  logAuditFireAndForget({
+    userId: session.appUser.id,
+    userEmail: session.appUser.email,
+    action: "lease.create",
+    resource: "Lease",
+    resourceId: lease.id,
+    buildingId: session.appUser.buildingId,
+    changes: {
+      tenantEmail: tenant.email,
+      unitId,
+      leaseStartDate: start.toISOString(),
+      leaseEndDate: end.toISOString(),
+      rentAmountMonthly,
+      leaseType,
+    },
+  });
+
+  revalidatePath("/team/residents");
+  return { ok: true, leaseId: lease.id };
+}
+
+const ArchiveLeaseBody = z.object({
+  leaseId: z.string().min(1),
+  reason: z.string().trim().max(280).optional().nullable(),
+});
+
+export async function archiveLease(_prev: unknown, formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await requireTeam();
+  if (!ALLOWED_ROLES.includes(session.appUser.role)) {
+    return { ok: false, error: "Only Building Managers and Facility Managers can end leases." };
+  }
+  if (!session.appUser.buildingId) {
+    return { ok: false, error: "Your account is not linked to a building." };
+  }
+
+  const parsed = ArchiveLeaseBody.safeParse({
+    leaseId: formData.get("leaseId"),
+    reason: ((formData.get("reason") as string) || "").trim() || null,
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+  }
+  const { leaseId, reason } = parsed.data;
+
+  const lease = await prisma.lease.findUnique({
+    where: { id: leaseId },
+    select: { id: true, buildingId: true, archivedAt: true, tenantId: true },
+  });
+  if (!lease || lease.buildingId !== session.appUser.buildingId) {
+    return { ok: false, error: "Lease not found in your building." };
+  }
+  if (lease.archivedAt) return { ok: true };
+
+  await prisma.lease.update({
+    where: { id: leaseId },
+    data: { archivedAt: new Date(), archiveReason: reason ?? null, status: "ended" },
+  });
+
+  logAuditFireAndForget({
+    userId: session.appUser.id,
+    userEmail: session.appUser.email,
+    action: "lease.archive",
+    resource: "Lease",
+    resourceId: leaseId,
+    buildingId: session.appUser.buildingId,
+    changes: { tenantId: lease.tenantId, reason: reason ?? null },
+  });
+
+  revalidatePath("/team/residents");
+  return { ok: true };
 }
 
 // ─── Bulk CSV onboarding ────────────────────────────────────────────────

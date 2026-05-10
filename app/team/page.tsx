@@ -46,9 +46,22 @@ export default async function TeamHome() {
           <p className="text-sm text-muted-foreground">
             {building.address}, {building.city}, {building.state} {building.zipCode}
           </p>
+        ) : isBM ? (
+          <div className="mt-4 rounded-md border border-accent/40 bg-accent/5 p-5">
+            <h2 className="font-semibold">Set up your first building</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              You&apos;re verified. Add the building you manage and you&apos;ll be able to invite staff and residents.
+            </p>
+            <Link
+              href="/team/buildings/new"
+              className="mt-4 inline-flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 rounded-md text-sm font-semibold hover:bg-accent/90 transition-colors"
+            >
+              Set up building →
+            </Link>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Your account is not yet linked to a building. Ask your platform admin.
+            Your account is not yet linked to a building. Ask your Building Manager.
           </p>
         )}
       </div>

@@ -1,12 +1,17 @@
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 
+import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
+// Idempotent demo seed. Safe to re-run — every create is upsert-guarded
+// or first-existence-checked. Creates demo building, 5 units, and (if a
+// resident exists in the building) sample work orders + a lease so a
+// sales call doesn't see only empty states.
 async function main() {
   const building = await prisma.building.upsert({
     where: { id: "demo-building-1" },
@@ -24,13 +29,23 @@ async function main() {
     },
   });
 
-  const unit = await prisma.unit.upsert({
-    where: { buildingId_unitNumber: { buildingId: building.id, unitNumber: "101" } },
-    update: {},
-    create: { id: "demo-unit-101", buildingId: building.id, unitNumber: "101", floor: 1, rentAmount: 1500 },
-  });
-
-  console.log(`Seeded: ${building.name} · Unit ${unit.unitNumber} (${unit.id})`);
+  const unitDefs = [
+    { unitNumber: "101", floor: 1, rentAmount: 2200 },
+    { unitNumber: "102", floor: 1, rentAmount: 2300 },
+    { unitNumber: "201", floor: 2, rentAmount: 2400 },
+    { unitNumber: "202", floor: 2, rentAmount: 2500 },
+    { unitNumber: "301", floor: 3, rentAmount: 2900 },
+  ];
+  const units = [];
+  for (const u of unitDefs) {
+    const unit = await prisma.unit.upsert({
+      where: { buildingId_unitNumber: { buildingId: building.id, unitNumber: u.unitNumber } },
+      update: {},
+      create: { id: `demo-unit-${u.unitNumber}`, buildingId: building.id, ...u },
+    });
+    units.push(unit);
+  }
+  console.log(`Seeded: ${building.name} · ${units.length} units`);
 
   const linkEmail = process.argv[2];
   if (linkEmail) {
@@ -40,28 +55,126 @@ async function main() {
     } else {
       const updated = await prisma.user.update({
         where: { id: user.id },
-        data: { buildingId: building.id, unitId: unit.id },
+        data: { buildingId: building.id, unitId: units[0].id },
       });
-      console.log(`Linked ${updated.email} → ${building.name} · Unit ${unit.unitNumber}`);
+      console.log(`Linked ${updated.email} → ${building.name} · Unit ${units[0].unitNumber}`);
     }
   } else {
     console.log("No email passed. To link a user run: npx tsx prisma/seed.ts your@email.com");
   }
 
-  // Sample announcement for the smoke test
-  const existing = await prisma.announcement.findFirst({ where: { buildingId: building.id } });
-  if (!existing) {
-    const anyManager = await prisma.user.findFirst({ where: { buildingId: building.id } });
-    if (anyManager) {
+  // Pick a manager-like user (BM/FM/concierge) for authoring announcements
+  // and a resident for opening work orders. Falls back gracefully if the
+  // building hasn't been populated yet.
+  const manager = await prisma.user.findFirst({
+    where: {
+      buildingId: building.id,
+      role: { in: ["building_manager", "facility_manager", "concierge"] },
+    },
+  });
+  const resident = await prisma.user.findFirst({
+    where: { buildingId: building.id, role: { in: ["resident", "tenant"] } },
+  });
+
+  // Sample announcement for the smoke test.
+  const announcementCount = await prisma.announcement.count({
+    where: { buildingId: building.id, deletedAt: null },
+  });
+  if (announcementCount === 0) {
+    const author = manager ?? resident;
+    if (author) {
       await prisma.announcement.create({
         data: {
           buildingId: building.id,
-          authorId: anyManager.id,
-          title: "Welcome to BuildingSync Demo Tower",
-          body: "This is a test announcement seeded for the R1 smoke build. Replace once a Building Manager posts a real one.",
+          authorId: author.id,
+          title: "Elevator maintenance on Saturday",
+          body: "Heads up — the south elevator will be out of service Saturday 9am–noon for its quarterly inspection. Please use the north elevator. Thanks for your patience.",
+          audience: "all",
         },
       });
       console.log("Seeded sample announcement.");
+    }
+  }
+
+  // Sample work orders so the team dashboard isn't all empty states.
+  if (resident) {
+    const workOrderCount = await prisma.workOrder.count({ where: { buildingId: building.id } });
+    if (workOrderCount === 0) {
+      const samples = [
+        {
+          status: "open" as const,
+          issue: "Leaky kitchen faucet",
+          description: "Started yesterday. Slow drip from the cold tap. Towel under sink for now.",
+          unit: units[0].unitNumber,
+          createdDaysAgo: 1,
+        },
+        {
+          status: "in_progress" as const,
+          issue: "Bedroom radiator not heating",
+          description: "Radiator in the second bedroom is cold. Living room one is fine. Building thermostat seems normal.",
+          unit: units[2].unitNumber,
+          createdDaysAgo: 3,
+        },
+        {
+          status: "closed" as const,
+          issue: "Hallway light flickering",
+          description: "Replaced — was a loose ballast. Closed.",
+          unit: units[1].unitNumber,
+          createdDaysAgo: 9,
+        },
+      ];
+      for (const s of samples) {
+        const created = new Date();
+        created.setDate(created.getDate() - s.createdDaysAgo);
+        const slaDeadline = new Date(created.getTime() + 72 * 60 * 60 * 1000);
+        await prisma.workOrder.create({
+          data: {
+            id: randomUUID(),
+            buildingId: building.id,
+            openedById: resident.id,
+            assigneeId: manager?.id ?? null,
+            issue: s.issue,
+            description: s.description,
+            status: s.status,
+            unit: s.unit,
+            priority: "normal",
+            slaPolicy: "normal_72h",
+            slaDeadline,
+            submittedAt: created,
+            createdAt: created,
+            updatedAt: created,
+          },
+        });
+      }
+      console.log(`Seeded ${samples.length} sample work orders.`);
+    }
+  }
+
+  // Sample active lease if a tenant + unit exist and there's no lease yet.
+  if (resident && units[0]) {
+    const leaseExists = await prisma.lease.findFirst({
+      where: { buildingId: building.id, tenantId: resident.id, archivedAt: null },
+    });
+    if (!leaseExists) {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 4);
+      const end = new Date(start);
+      end.setFullYear(end.getFullYear() + 1);
+      await prisma.lease.create({
+        data: {
+          id: randomUUID(),
+          buildingId: building.id,
+          tenantId: resident.id,
+          unitId: units[0].id,
+          leaseStartDate: start,
+          leaseEndDate: end,
+          rentAmountMonthly: 2200,
+          securityDeposit: 2200,
+          leaseType: "fixed_term",
+          status: "active",
+        },
+      });
+      console.log(`Seeded sample lease for ${resident.email}.`);
     }
   }
 }

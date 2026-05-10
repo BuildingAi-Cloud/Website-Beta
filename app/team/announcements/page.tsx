@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusPill, type Tone } from "@/components/StatusPill";
 import { formatRelative } from "@/lib/format";
 import { AnnouncementForm } from "./AnnouncementForm";
+import { DeleteAnnouncementButton } from "./DeleteButton";
 
 const AUDIENCE_LABEL: Record<string, string> = {
   all: "All residents & tenants",
@@ -66,10 +67,13 @@ export default async function TeamAnnouncementsPage() {
               <li key={a.id} className="bg-card border border-border rounded-md p-4">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <h3 className="font-medium">{a.title}</h3>
-                  <StatusPill
-                    label={AUDIENCE_LABEL[a.audience] ?? a.audience}
-                    tone={AUDIENCE_TONE[a.audience] ?? "neutral"}
-                  />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <StatusPill
+                      label={AUDIENCE_LABEL[a.audience] ?? a.audience}
+                      tone={AUDIENCE_TONE[a.audience] ?? "neutral"}
+                    />
+                    <DeleteAnnouncementButton announcementId={a.id} title={a.title} />
+                  </div>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{a.body}</p>
                 <p className="mt-3 text-xs text-muted-foreground/85">

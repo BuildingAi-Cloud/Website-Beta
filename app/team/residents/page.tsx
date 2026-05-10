@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Avatar } from "@/components/Avatar";
 import { AddResidentForm } from "./AddResidentForm";
 import { BulkAddForm } from "./BulkAddForm";
+import { LeaseSection } from "./LeaseSection";
 
 const CAN_ADD = ["building_manager", "facility_manager"];
 
@@ -19,7 +20,9 @@ export default async function TeamResidentsPage() {
     );
   }
 
-  const [residents, units] = await Promise.all([
+  const canAdd = CAN_ADD.includes(appUser.role);
+
+  const [residents, units, leases] = await Promise.all([
     prisma.user.findMany({
       where: {
         buildingId: appUser.buildingId,
@@ -28,16 +31,22 @@ export default async function TeamResidentsPage() {
       include: { unitRel: { select: { unitNumber: true } } },
       orderBy: [{ role: "asc" }, { email: "asc" }],
     }),
-    CAN_ADD.includes(appUser.role)
-      ? prisma.unit.findMany({
-          where: { buildingId: appUser.buildingId },
-          orderBy: { unitNumber: "asc" },
-          select: { id: true, unitNumber: true },
+    prisma.unit.findMany({
+      where: { buildingId: appUser.buildingId },
+      orderBy: { unitNumber: "asc" },
+      select: { id: true, unitNumber: true },
+    }),
+    canAdd
+      ? prisma.lease.findMany({
+          where: { buildingId: appUser.buildingId, archivedAt: null, status: "active" },
+          orderBy: { leaseStartDate: "desc" },
+          include: {
+            tenant: { select: { name: true, email: true } },
+            unit: { select: { unitNumber: true } },
+          },
         })
       : Promise.resolve([]),
   ]);
-
-  const canAdd = CAN_ADD.includes(appUser.role);
 
   return (
     <main className="px-4 md:px-6 py-8 md:py-10 max-w-5xl mx-auto">
@@ -58,6 +67,22 @@ export default async function TeamResidentsPage() {
             <BulkAddForm />
           </section>
         </div>
+      )}
+
+      {canAdd && (
+        <LeaseSection
+          tenants={residents.map((r) => ({ id: r.id, email: r.email, name: r.name }))}
+          units={units}
+          leases={leases.map((l) => ({
+            id: l.id,
+            tenantLabel: l.tenant?.name || l.tenant?.email || "—",
+            unitLabel: l.unit?.unitNumber || "—",
+            rentAmountMonthly: l.rentAmountMonthly,
+            leaseStartDate: l.leaseStartDate.toISOString(),
+            leaseEndDate: l.leaseEndDate.toISOString(),
+            leaseType: l.leaseType,
+          }))}
+        />
       )}
 
       <section className="mt-10">

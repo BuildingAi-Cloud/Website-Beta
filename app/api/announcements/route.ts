@@ -4,6 +4,7 @@ import { getOrCreateAppUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmailFireAndForget, announcementBroadcastEmail } from "@/lib/email";
 import { sendPushToUsers } from "@/lib/push";
+import { logAuditFireAndForget } from "@/lib/audit";
 
 const Body = z.object({
   title: z.string().trim().min(1).max(200),
@@ -73,6 +74,22 @@ export async function POST(request: NextRequest) {
     prisma.user.findMany({ where: recipientFilter, select: { id: true, email: true, notifyEmail: true } }),
     prisma.building.findUnique({ where: { id: appUser.buildingId }, select: { name: true } }),
   ]);
+
+  logAuditFireAndForget({
+    userId: appUser.id,
+    userEmail: appUser.email,
+    action: "announcement.create",
+    resource: "Announcement",
+    resourceId: announcement.id,
+    buildingId: appUser.buildingId,
+    changes: {
+      title,
+      audience,
+      targetUnitIds: audience === "specific_units" ? targetUnitIds : [],
+      bodyLength: body.length,
+      recipientCount: recipients.length,
+    },
+  });
   if (recipients.length > 0) {
     const emailRecipients = recipients.filter((r) => r.notifyEmail).map((r) => r.email);
     if (emailRecipients.length > 0) {
