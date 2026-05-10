@@ -17,9 +17,39 @@ const primaryButton =
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<SignInFallback />}>
       <SignInPageInner />
     </Suspense>
+  );
+}
+
+// Server-rendered shell shown while the client component hydrates.
+// Critical when JS is slow or blocked by an ad blocker — without this,
+// Next.js renders the global not-found component, which looks like a
+// 404 to the user. Mirrors the AuthShell + form layout so the page
+// looks correct even pre-hydration.
+function SignInFallback() {
+  return (
+    <AuthShell back={{ href: "/", label: "Home" }}>
+      <div className="bg-card border border-border rounded-xl p-6 sm:p-8 shadow-sm">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
+        <p className="text-sm text-muted-foreground -mt-1">
+          Welcome back. Loading the sign-in form…
+        </p>
+        <div className="mt-6 space-y-4">
+          <div className="h-10 rounded-md border border-border bg-input/30 animate-pulse" aria-hidden />
+          <div className="h-10 rounded-md border border-border bg-input/30 animate-pulse" aria-hidden />
+          <div className="h-10 rounded-md bg-accent/40 animate-pulse" aria-hidden />
+        </div>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Form not loading? Disable any ad / script blocker for this domain and refresh, or email{" "}
+          <a href="mailto:info@buildingsync.app" className="text-accent hover:underline">
+            info@buildingsync.app
+          </a>
+          .
+        </p>
+      </div>
+    </AuthShell>
   );
 }
 
