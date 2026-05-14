@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Wordmark } from "@/components/ui";
+import { brand, isCanonicalBrand } from "@/lib/brand";
 
 // Shared chrome for /signin, /signup, /auth/reset, /onboarding, and the
 // trust pages (/privacy, /terms, /docs). Top bar reads naturally:
@@ -64,11 +65,17 @@ export function AuthShell({
 
       <footer className={`${containerWidth} mx-auto px-4 sm:px-6 py-6 border-t border-border text-center`}>
         <p className="text-xs text-muted-foreground font-mono">
-          © {new Date().getFullYear()} BuildingSync · a Node2.io service ·{" "}
+          © {new Date().getFullYear()} {brand.name}
+          {brand.parentAttribution ? ` · ${brand.parentAttribution}` : ""} ·{" "}
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
           {" · "}
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
         </p>
+        {!isCanonicalBrand && brand.showPoweredBy && (
+          <p className="mt-2 text-[10px] text-muted-foreground/70 font-mono">
+            Powered by BuildingSync
+          </p>
+        )}
       </footer>
     </div>
   );

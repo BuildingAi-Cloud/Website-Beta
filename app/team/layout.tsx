@@ -1,6 +1,6 @@
 import { requireTeam } from "@/lib/team";
 import { PortalShell } from "@/components/PortalShell";
-import type { MobileNavItem } from "@/components/MobileMenu";
+import type { NavSection, MobileNavItem } from "@/components/MobileMenu";
 import { getNotifications } from "@/lib/notifications";
 
 export default async function TeamLayout({ children }: { children: React.ReactNode }) {
@@ -15,40 +15,49 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
     return [];
   });
 
-  // Per-persona IA. Concierge is read-only on most things and doesn't manage
-  // units or post announcements; FM doesn't post announcements or hire
-  // staff; only BM hires staff and posts announcements. Account lives in
-  // the AccountMenu dropdown for every persona, not in the main nav.
-  const items: MobileNavItem[] = [
+  // L1 sections grouped by workflow. Each persona only sees the items
+  // they're authorised for: concierge is read-only on most things and
+  // doesn't manage units or post announcements; FM doesn't post
+  // announcements, manage packages, or hire staff; only BM hires staff,
+  // posts announcements, and sees the compliance surface.
+  const isBM = appUser.role === "building_manager";
+  const isFM = appUser.role === "facility_manager";
+  const isConcierge = appUser.role === "concierge";
+
+  const operations: MobileNavItem[] = [
     { href: "/team/work-orders", label: "Work orders" },
     { href: "/team/incidents", label: "Incidents" },
-    { href: "/team/residents", label: "Residents" },
   ];
-  if (appUser.role === "building_manager") {
-    items.push({ href: "/team/staff", label: "Staff" });
+  if (isBM || isConcierge) operations.push({ href: "/team/packages", label: "Packages" });
+
+  const people: MobileNavItem[] = [{ href: "/team/residents", label: "Residents" }];
+  if (isBM) people.push({ href: "/team/staff", label: "Staff" });
+
+  const property: MobileNavItem[] = [];
+  if (isBM || isFM) property.push({ href: "/team/units", label: "Units" });
+  if (isBM) property.push({ href: "/team/announcements", label: "Announcements" });
+  property.push({ href: "/team/documents", label: "Documents" });
+
+  const compliance: MobileNavItem[] = [];
+  if (isBM) {
+    compliance.push({ href: "/team/legal", label: "Legal" });
+    compliance.push({ href: "/team/access-requests", label: "Access" });
+    compliance.push({ href: "/team/audit-log", label: "Audit log" });
+    compliance.push({ href: "/team/license", label: "License" });
   }
-  if (appUser.role === "building_manager" || appUser.role === "facility_manager") {
-    items.push({ href: "/team/units", label: "Units" });
-  }
-  if (appUser.role === "building_manager") {
-    items.push({ href: "/team/announcements", label: "Announcements" });
-  }
-  if (appUser.role === "concierge" || appUser.role === "building_manager") {
-    items.push({ href: "/team/packages", label: "Packages" });
-  }
-  items.push({ href: "/team/documents", label: "Documents" });
-  if (appUser.role === "building_manager") {
-    items.push({ href: "/team/legal", label: "Legal" });
-    items.push({ href: "/team/access-requests", label: "Access" });
-    items.push({ href: "/team/audit-log", label: "Audit log" });
-    items.push({ href: "/team/license", label: "License" });
-  }
+
+  const sections: NavSection[] = [
+    { label: "Operations", items: operations },
+    { label: "People", items: people },
+    { label: "Property", items: property },
+  ];
+  if (compliance.length > 0) sections.push({ label: "Compliance", items: compliance });
 
   return (
     <PortalShell
       portalLabel="Team"
       portalHome="/team"
-      navItems={items}
+      navSections={sections}
       userName={appUser.name}
       userEmail={authUser.email!}
       userRole={appUser.role}

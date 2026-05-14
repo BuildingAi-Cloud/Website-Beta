@@ -20,6 +20,10 @@ const ENTERPRISE_BLOCKS = [
     body: "Your buildings get their own Supabase project + Vercel deployment. Same code, isolated infrastructure, no shared database with other customers. Choose Canada (ca-central, Toronto) by default; we support US, EU, and other regions on request.",
   },
   {
+    title: "White-label your resident experience",
+    body: "Ship the app under your brand — your logo, your colors, your domain (residents.yourcompany.ca), your sender name on email and push. Two tiers: Co-branded (your brand prominent, small \"powered by BuildingSync\" in the footer) or Fully unbranded (no BuildingSync mark visible to residents). PWA icons, splash screens, and outbound copy all swappable.",
+  },
+  {
     title: "Identity that fits your stack",
     body: "Single sign-on via SAML, OIDC, or your existing identity provider (Okta, Azure AD, Google Workspace). SCIM provisioning for managed user lifecycle. MFA mandatory across the surface.",
   },
@@ -64,6 +68,10 @@ const FAQS = [
   {
     q: "Can we host BuildingSync on our own cloud (BYOC)?",
     a: "Yes — for very large customers with their own IT capacity. The architectural hook is in place via signed enterprise license keys. We will not pretend BYOC is push-button today; it's a real engineering engagement and we'll only do it where the contract justifies the work. Talk to us.",
+  },
+  {
+    q: "Can we ship the app under our own brand (white-label)?",
+    a: "Yes. Two tiers: Co-branded (your brand prominent across the resident surface; a small \"powered by BuildingSync\" stays in the footer) and Fully unbranded (no BuildingSync mark visible to residents anywhere). Both include your custom domain, brand colours, logo, PWA icons, splash screens, and email/push sender identity. Available on the Enterprise plan; full unbranded is a separate premium tier.",
   },
   {
     q: "Do you support multi-portfolio / multi-property-management firms?",

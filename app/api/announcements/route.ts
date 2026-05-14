@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getOrCreateAppUser } from "@/lib/auth";
+import { getApiUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmailFireAndForget, announcementBroadcastEmail } from "@/lib/email";
 import { sendPushToUsers } from "@/lib/push";
@@ -14,7 +14,7 @@ const Body = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const session = await getOrCreateAppUser();
+  const session = await getApiUser(request);
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { appUser } = session;

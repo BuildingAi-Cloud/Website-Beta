@@ -151,6 +151,26 @@
   text-transform: uppercase;
 }
 
+/* Accessibility quick-controls (AccessibilityMenu in the header).
+   Values are applied via data attributes on <html>. Font scaling uses
+   the root font-size so rem-based Tailwind utilities cascade; we also
+   nudge the body's hardcoded 16px so body copy follows. */
+html[data-font-scale="lg"] { font-size: 110%; }
+html[data-font-scale="lg"] body { font-size: 1.1rem; }
+html[data-font-scale="xl"] { font-size: 125%; }
+html[data-font-scale="xl"] body { font-size: 1.25rem; }
+
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-underline="always"] a { text-decoration: underline; }
+
 /* Print: white background, hide chrome marked print:hidden, force
    solid black ink so legal notices look like documents not screens. */
 @media print {

@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { AuthShell } from "@/components/AuthShell";
-import { Turnstile, isTurnstileConfigured } from "@/components/Turnstile";
 
 function normalizeInviteCode(input: string): string {
   return input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
@@ -54,21 +53,11 @@ export default function SignUpPage() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Cloudflare Turnstile token (if configured). Forwarded to Supabase
-  // Auth's native CAPTCHA support — Supabase verifies server-side.
-  const captchaEnabled = isTurnstileConfigured();
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const handleCaptcha = useCallback((token: string) => setCaptchaToken(token), []);
-
   const strength = useMemo(() => passwordStrength(password), [password]);
 
   const canStepOneNext = email.trim().length > 0 && strength.score >= 1;
   const canStepTwoNext = name.trim().length > 0;
-  const canSubmit =
-    isHuman &&
-    agreedTerms &&
-    companyHoneypot === "" &&
-    (!captchaEnabled || Boolean(captchaToken));
+  const canSubmit = isHuman && agreedTerms && companyHoneypot === "";
 
   function next() {
     if (step === 1 && canStepOneNext) setStep(2);
@@ -98,7 +87,6 @@ export default function SignUpPage() {
           // the new account to the right building on first auth.
           invite_code: code && code.length === 6 ? code : null,
         },
-        ...(captchaToken ? { captchaToken } : {}),
       },
     });
     setLoading(false);
@@ -150,19 +138,12 @@ export default function SignUpPage() {
                     />
                   )}
                   {step === 3 && (
-                    <>
-                      <StepVerify
-                        isHuman={isHuman} setIsHuman={setIsHuman}
-                        agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms}
-                        companyHoneypot={companyHoneypot} setCompanyHoneypot={setCompanyHoneypot}
-                        email={email}
-                      />
-                      {captchaEnabled && (
-                        <div className="flex justify-center pt-2">
-                          <Turnstile onToken={handleCaptcha} />
-                        </div>
-                      )}
-                    </>
+                    <StepVerify
+                      isHuman={isHuman} setIsHuman={setIsHuman}
+                      agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms}
+                      companyHoneypot={companyHoneypot} setCompanyHoneypot={setCompanyHoneypot}
+                      email={email}
+                    />
                   )}
 
                   {error && (
@@ -223,6 +204,21 @@ export default function SignUpPage() {
           {" "}and{" "}
           <Link href="/privacy" className="hover:text-foreground transition-colors underline underline-offset-2">Privacy Policy</Link>.
         </p>
+
+        {/* Off-ramp for buyers who need data residency, SSO, or single-tenant
+            infrastructure. Sales conversation, not a self-serve toggle. */}
+        <div className="mt-4 text-center">
+          <Link
+            href="/enterprise"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Need data residency or your own infrastructure? Advanced setup →
+          </Link>
+        </div>
       </div>
     </AuthShell>
   );

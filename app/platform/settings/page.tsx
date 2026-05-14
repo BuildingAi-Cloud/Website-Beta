@@ -6,6 +6,7 @@ import { NotificationsTab } from "@/components/settings/NotificationsTab";
 import { BillingTab } from "@/components/settings/BillingTab";
 import { PrivacyTab } from "@/components/settings/PrivacyTab";
 import { SystemTab } from "@/components/settings/SystemTab";
+import { IntegrationsTab } from "@/components/settings/IntegrationsTab";
 
 const BASE = "/platform/settings";
 
@@ -60,6 +61,7 @@ export default async function PlatformSettingsPage({
           vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
         />
       )}
+      {active === "integrations" && <IntegrationsTab />}
       {active === "billing" && <BillingTab role={appUser.role} buildingName={null} />}
       {active === "privacy" && (
         <PrivacyTab email={authUser.email!} locale={locale} archived={Boolean(appUser.archivedAt)} />

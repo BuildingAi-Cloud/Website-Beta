@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { getApiUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 
 // Remove a Web Push subscription. The client calls this after the
@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { appUser } = await requireUser();
+    const session = await getApiUser(request);
+    if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const { appUser } = session;
     const body = (await request.json().catch(() => ({}))) as { endpoint?: string };
 
     if (!body.endpoint) {

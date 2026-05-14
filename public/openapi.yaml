@@ -1,0 +1,414 @@
+openapi: 3.1.0
+info:
+  title: BuildingSync API
+  version: "0.1.0"
+  summary: >-
+    Public HTTP API for the BuildingSync platform. Designed to be consumed by
+    the BuildingSync web app, native iOS and Android apps, and authorized
+    third-party integrations.
+  description: |
+    BuildingSync is the operating system for residential buildings. This
+    API lets clients submit and track maintenance work orders, broadcast
+    announcements, manage Web Push subscriptions, and export personal data.
+
+    ## Authentication
+
+    Two authentication modes are supported on the same endpoints:
+
+    - **Cookie session** (web). After signing in through the web app, the
+      Supabase session cookie is forwarded automatically by the browser.
+    - **Bearer JWT** (mobile / native). Native clients sign in directly via
+      the Supabase Auth SDK and pass the resulting access token as
+      `Authorization: Bearer <access_token>` on every request. Tokens
+      should be refreshed using the Supabase SDK's standard refresh flow.
+
+    Both modes resolve to the same user record. New clients should prefer
+    Bearer authentication.
+
+    ## Real-time updates
+
+    For low-latency sync, mobile clients should subscribe to row-level
+    Postgres changes via Supabase Realtime using the same Supabase project
+    credentials. This keeps work-order status, announcements, and
+    deliveries in sync across devices without polling. Push notifications
+    (APNs, FCM, Web Push) are used for off-device delivery.
+
+    ## Versioning
+
+    This is the v0 (preview) surface. Breaking changes will be communicated
+    via the `Deprecation` and `Sunset` response headers and 30-day notice.
+
+  contact:
+    name: BuildingSync Developer Support
+    email: info@buildingsync.app
+    url: https://www.buildingsync.app/developers
+  license:
+    name: Proprietary
+    url: https://www.buildingsync.app/terms
+
+servers:
+  - url: https://www.buildingsync.app
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: WorkOrders
+    description: Maintenance requests submitted by residents and managed by staff.
+  - name: Announcements
+    description: Building-wide notices broadcast by Building Managers.
+  - name: Push
+    description: Web Push / APNs / FCM subscription management.
+  - name: Me
+    description: Endpoints scoped to the currently authenticated user.
+  - name: System
+    description: Discovery and health endpoints.
+
+security:
+  - bearerAuth: []
+  - cookieSession: []
+
+paths:
+  /api/openapi:
+    get:
+      tags: [System]
+      summary: Fetch this OpenAPI specification.
+      security: []
+      responses:
+        "200":
+          description: The OpenAPI specification in YAML.
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+  /api/work-orders:
+    get:
+      tags: [WorkOrders]
+      summary: List the authenticated user's maintenance requests.
+      description: Returns up to 50 of the caller's own requests, newest first.
+      responses:
+        "200":
+          description: A page of work orders.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workOrders:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkOrder" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [WorkOrders]
+      summary: Submit a new maintenance request.
+      description: |
+        Creates a work order in the caller's building. The building team is
+        notified by email and push. The caller's account must already be
+        linked to a building.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description]
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  example: Leak under kitchen sink
+                description:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                  example: Started overnight, water pooling on cabinet floor.
+      responses:
+        "201":
+          description: Work order created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workOrder: { $ref: "#/components/schemas/WorkOrder" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: Caller is not linked to a building.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/work-orders/{id}:
+    patch:
+      tags: [WorkOrders]
+      summary: Update a work order (staff only).
+      description: |
+        Building Managers and Facility Managers in the same building can
+        advance the status of a work order or assign it to themselves.
+        Residents who opened the work order are notified by email + push
+        on status change.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [open, in_progress, scheduled, completed, closed]
+                assignSelf:
+                  type: boolean
+                  description: When true, assigns the work order to the caller.
+      responses:
+        "200":
+          description: Work order updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workOrder: { $ref: "#/components/schemas/WorkOrder" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/announcements:
+    post:
+      tags: [Announcements]
+      summary: Broadcast a building announcement (Building Manager only).
+      description: |
+        Creates a building-wide notice and triggers email + push delivery
+        to the target audience. Restricted to the Building Manager role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 200 }
+                body: { type: string, minLength: 1, maxLength: 5000 }
+                audience:
+                  type: string
+                  enum: [all, tenants_only, specific_units]
+                  default: all
+                targetUnitIds:
+                  type: array
+                  items: { type: string }
+                  description: Required when audience is "specific_units".
+      responses:
+        "201":
+          description: Announcement created and queued for delivery.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  announcement: { $ref: "#/components/schemas/Announcement" }
+                  recipientCount: { type: integer, example: 42 }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Caller is not linked to a building.
+
+  /api/push/subscribe:
+    post:
+      tags: [Push]
+      summary: Register a Web Push subscription for the caller.
+      description: |
+        Idempotent per subscription endpoint. Sending the same endpoint
+        twice updates the existing record rather than duplicating it.
+        Native clients should register their APNs/FCM device token here
+        with the matching shape once native push is enabled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint, keys]
+              properties:
+                endpoint: { type: string, format: uri }
+                keys:
+                  type: object
+                  required: [p256dh, auth]
+                  properties:
+                    p256dh: { type: string }
+                    auth: { type: string }
+      responses:
+        "200":
+          description: Subscription registered or updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, example: true }
+                  id: { type: string }
+                  updated: { type: boolean }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/push/unsubscribe:
+    post:
+      tags: [Push]
+      summary: Remove a Web Push subscription.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint: { type: string, format: uri }
+      responses:
+        "200":
+          description: Subscription removed (or already absent).
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/me/data-export:
+    get:
+      tags: [Me]
+      summary: Download a JSON snapshot of the caller's personal data.
+      description: |
+        PIPEDA / GDPR Art. 20 data portability. Returns a single JSON
+        document containing the caller's profile, leases, work orders,
+        payments, announcements authored, documents uploaded, incidents
+        reported, amenity bookings, posts, deliveries, and audit-log
+        entries keyed to the caller's user id.
+      responses:
+        "200":
+          description: Data export.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataExport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase access token from the auth SDK.
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+      description: Set automatically by the BuildingSync web app after sign-in.
+
+  responses:
+    Unauthorized:
+      description: The caller is not signed in.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: The caller is signed in but is not allowed to perform this action.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: The requested resource does not exist or is not visible to the caller.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InvalidBody:
+      description: The request body did not match the expected schema.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: unauthorized
+        message:
+          type: string
+          example: Your account is not yet linked to a building.
+        issues:
+          type: array
+          description: Optional Zod-style validation issue list.
+          items: { type: object }
+
+    WorkOrder:
+      type: object
+      required: [id, buildingId, issue, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        buildingId: { type: string, format: uuid }
+        unit: { type: string, nullable: true, example: "405" }
+        openedById: { type: string, format: uuid, nullable: true }
+        assigneeId: { type: string, format: uuid, nullable: true }
+        issue: { type: string, example: Leak under kitchen sink }
+        description: { type: string, nullable: true }
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+        status:
+          type: string
+          enum: [open, in_progress, scheduled, completed, closed]
+        slaPolicy: { type: string, nullable: true, example: normal_72h }
+        slaDeadline: { type: string, format: date-time, nullable: true }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Announcement:
+      type: object
+      required: [id, buildingId, title, body, audience, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        buildingId: { type: string, format: uuid }
+        authorId: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        audience:
+          type: string
+          enum: [all, tenants_only, specific_units]
+        targetUnitIds:
+          type: array
+          items: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+
+    DataExport:
+      type: object
+      properties:
+        exported_at: { type: string, format: date-time }
+        schema_version: { type: string, example: v1 }
+        notice: { type: string }
+        auth_user:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            email: { type: string, format: email }
+        profile: { type: object }
+        leases: { type: array, items: { type: object } }
+        work_orders_opened: { type: array, items: { $ref: "#/components/schemas/WorkOrder" } }
+        work_order_notes_authored: { type: array, items: { type: object } }
+        payments: { type: array, items: { type: object } }
+        announcements_authored: { type: array, items: { $ref: "#/components/schemas/Announcement" } }
+        documents_uploaded: { type: array, items: { type: object } }
+        incidents_reported: { type: array, items: { type: object } }
+        amenity_bookings: { type: array, items: { type: object } }
+        posts_authored: { type: array, items: { type: object } }
+        deliveries: { type: array, items: { type: object } }
+        audit_log: { type: array, items: { type: object } }

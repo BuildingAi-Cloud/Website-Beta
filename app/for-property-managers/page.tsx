@@ -136,6 +136,33 @@ export default function ForPropertyManagersPage() {
           </div>
         </section>
 
+        {/* Advanced setup off-ramp — data residency, SSO, single-tenant.
+            Sales conversation; intentionally separate from self-serve pricing. */}
+        <section className="mt-6 md:mt-8 bg-card border border-border rounded-xl p-6 md:p-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Advanced setup · Enterprise &amp; Government
+              </p>
+              <h3 className="mt-2 text-lg md:text-xl font-semibold tracking-tight">
+                Need data residency, SSO, or your own infrastructure?
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                Dedicated Supabase project in the region of your choice, white-label under your
+                own brand and domain, SAML / OIDC single sign-on, AODA + WCAG 2.1 AA accessibility,
+                bilingual UI, and procurement-friendly contracts. For REITs, large condo corps,
+                and Canadian government customers.
+              </p>
+            </div>
+            <Link
+              href="/enterprise"
+              className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-md border border-border hover:bg-muted text-sm font-semibold transition-colors"
+            >
+              Talk to us →
+            </Link>
+          </div>
+        </section>
+
         {/* What they're getting + honest scope */}
         <section className="mt-16 md:mt-20 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-card border border-border rounded-md p-5">

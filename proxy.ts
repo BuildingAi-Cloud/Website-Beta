@@ -14,6 +14,7 @@ const PASS_THROUGH_PREFIXES = [
   "/privacy",
   "/terms",
   "/docs",
+  "/developers",
   "/api",
   "/_next",
   "/platform",

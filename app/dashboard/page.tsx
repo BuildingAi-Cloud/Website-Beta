@@ -3,6 +3,16 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateShort } from "@/lib/format";
 import { Avatar } from "@/components/Avatar";
+import { NotificationBell } from "@/components/NotificationBell";
+import { getNotifications } from "@/lib/notifications";
+
+function greetingFor(date: Date) {
+  const h = date.getHours();
+  if (h < 5) return "Hi";
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 // Resident/tenant home — v2 design: dark hero with building + user
 // identity, then a vertical feed of sections (Announcements, Amenity
@@ -60,7 +70,7 @@ export default async function DashboardPage() {
   const { authUser, appUser } = await requireUser();
   const now = new Date();
 
-  const [building, unit, recentAnnouncements, upcomingBooking, upcomingEvents, pendingDeliveries] = await Promise.all([
+  const [building, unit, recentAnnouncements, upcomingBooking, upcomingEvents, pendingDeliveries, notifications] = await Promise.all([
     appUser.buildingId
       ? prisma.building.findUnique({ where: { id: appUser.buildingId } }).catch(() => null)
       : Promise.resolve(null),
@@ -137,43 +147,83 @@ export default async function DashboardPage() {
         console.error("[dashboard] delivery.findMany failed", err);
         return [];
       }),
+    getNotifications({ id: appUser.id, role: appUser.role, buildingId: appUser.buildingId }).catch((err) => {
+      console.error("[dashboard] getNotifications failed", err);
+      return [];
+    }),
   ]);
 
   const displayName = appUser.name || authUser.email!.split("@")[0];
+  const firstName = displayName.split(/[\s.]/)[0];
+  const greeting = greetingFor(now);
 
   return (
     <main className="pb-8">
-      <section className="bg-foreground text-background px-5 pt-6 pb-8 md:rounded-b-2xl">
-        <div className="max-w-3xl mx-auto flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight leading-tight">
-              {building ? building.name : "Welcome to BuildingSync"}
-            </h1>
-            {building && (
-              <p className="mt-2 text-sm text-background/70 truncate">
-                {displayName}
-                {unit ? ` · ${unit.unitNumber}` : ""}
-              </p>
-            )}
+      <section className="bg-foreground text-background px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-8 md:rounded-b-2xl">
+        <div className="max-w-3xl mx-auto">
+          {/* Mobile-only action row — surfaces notifications + account/menu
+              shortcut. Desktop already has these in the top header. */}
+          <div className="md:hidden flex items-center justify-end gap-1 -mt-1 mb-3 -mr-2">
+            <NotificationBell items={notifications} />
+            <Link
+              href="/dashboard/menu"
+              aria-label="Open menu"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-background/10 transition-colors"
+            >
+              <Avatar
+                name={appUser.name}
+                email={authUser.email!}
+                size="md"
+                className="ring-2 ring-background/30"
+              />
+            </Link>
           </div>
-          <Avatar
-            name={appUser.name}
-            email={authUser.email!}
-            size="lg"
-            className="ring-2 ring-background/20 mt-1 shrink-0"
-          />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs md:text-sm text-background/70">
+                {greeting}, {firstName}
+              </p>
+              <h1 className="mt-1 text-2xl md:text-3xl font-semibold tracking-tight leading-tight">
+                {building ? building.name : "Welcome to BuildingSync"}
+              </h1>
+              {building && (
+                <p className="mt-2 text-sm text-background/70 truncate">
+                  {unit ? `Unit ${unit.unitNumber}` : authUser.email}
+                </p>
+              )}
+            </div>
+            {/* Desktop keeps the original simple avatar; mobile uses the
+                action row above. */}
+            <Avatar
+              name={appUser.name}
+              email={authUser.email!}
+              size="lg"
+              className="hidden md:block ring-2 ring-background/20 mt-1 shrink-0"
+            />
+          </div>
         </div>
       </section>
 
       {!building ? (
-        <div className="max-w-md mx-auto mt-6 mx-4 bg-card border border-border rounded-xl p-6 text-center">
+        <div className="max-w-md mt-6 mx-4 md:mx-auto bg-card border border-border rounded-xl p-6 text-center">
           <p className="text-sm text-muted-foreground leading-relaxed">
             Your account isn&apos;t linked to a building yet. Ask your Building Manager to add you.
           </p>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Need help? Email{" "}
-            <a href="mailto:info@buildingsync.app" className="text-accent hover:underline">info@buildingsync.app</a>.
-          </p>
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+            <Link
+              href="/dashboard/account"
+              className="inline-flex justify-center items-center px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors text-sm"
+            >
+              Complete your profile
+            </Link>
+            <a
+              href="mailto:info@buildingsync.app"
+              className="inline-flex justify-center items-center px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors text-sm"
+            >
+              Contact support
+            </a>
+          </div>
         </div>
       ) : (
         <div className="max-w-3xl mx-auto px-4 md:px-6 pt-6 space-y-8">

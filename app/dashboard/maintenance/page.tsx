@@ -28,7 +28,7 @@ export default async function MaintenancePage() {
       <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Back</Link>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Maintenance</h1>
 
-      <section className="mt-8 bg-card border border-border rounded-md p-5">
+      <section id="new" className="mt-8 bg-card border border-border rounded-md p-5 scroll-mt-24">
         <h2 className="text-base font-semibold">New request</h2>
         <MaintenanceForm hasBuilding={Boolean(appUser.buildingId)} />
       </section>

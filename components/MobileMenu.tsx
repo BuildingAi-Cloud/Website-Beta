@@ -6,12 +6,16 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 export type MobileNavItem = { href: string; label: string };
+// L1 grouping for the post-login portals. Each section's first item is
+// the L1 destination; the remaining items appear in the contextual L2
+// row on desktop and as a flat group on mobile.
+export type NavSection = { label: string; items: MobileNavItem[] };
 
 export function MobileMenu({
-  items,
+  sections,
   rightSlot,
 }: {
-  items: MobileNavItem[];
+  sections: NavSection[];
   rightSlot?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -86,25 +90,37 @@ export function MobileMenu({
               </div>
 
               <nav className="flex-1 overflow-y-auto px-3 py-4">
-                <ul className="space-y-1">
-                  {items.map((item) => {
-                    const active = pathname === item.href || pathname.startsWith(item.href + "/");
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={`block px-4 py-3 rounded-md text-sm transition-colors ${
-                            active
-                              ? "bg-accent/10 text-accent font-medium"
-                              : "text-foreground/85 hover:bg-muted/40"
-                          }`}
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {sections.map((section, sIdx) => {
+                  const isStandalone = section.items.length === 1;
+                  return (
+                    <div key={section.label} className={sIdx > 0 ? "mt-4" : ""}>
+                      {!isStandalone && (
+                        <div className="px-4 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                          {section.label}
+                        </div>
+                      )}
+                      <ul className="space-y-1">
+                        {section.items.map((item) => {
+                          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                          return (
+                            <li key={item.href}>
+                              <Link
+                                href={item.href}
+                                className={`block px-4 py-3 rounded-md text-sm transition-colors ${
+                                  active
+                                    ? "bg-accent/10 text-accent font-medium"
+                                    : "text-foreground/85 hover:bg-muted/40"
+                                }`}
+                              >
+                                {isStandalone ? section.label : item.label}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
               </nav>
 
               {rightSlot && (

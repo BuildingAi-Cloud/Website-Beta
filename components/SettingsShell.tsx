@@ -10,13 +10,23 @@ import { roleLabel } from "@/components/RoleBadge";
 export type SettingsTab =
   | "profile"
   | "notifications"
+  | "integrations"
   | "billing"
   | "privacy"
   | "system";
 
-const TAB_ORDER: { key: SettingsTab; label: string }[] = [
+// `roles` filters the tab in the nav. Omitted = visible to all. The
+// Integrations tab is staff/admin only — residents don't connect Slack.
+const STAFF_ROLES = new Set([
+  "building_manager",
+  "facility_manager",
+  "concierge",
+  "admin",
+]);
+const TAB_ORDER: { key: SettingsTab; label: string; roles?: (role: string) => boolean }[] = [
   { key: "profile",       label: "Profile" },
   { key: "notifications", label: "Notifications" },
+  { key: "integrations",  label: "Integrations", roles: (r) => STAFF_ROLES.has(r) },
   { key: "billing",       label: "Billing" },
   { key: "privacy",       label: "Privacy & data" },
   { key: "system",        label: "System" },
@@ -79,7 +89,7 @@ export function SettingsShell({
 
       <div className="mt-6 border-b border-border overflow-x-auto scrollbar-hide -mx-4 md:-mx-0 px-4 md:px-0">
         <nav className="flex gap-1 min-w-max">
-          {TAB_ORDER.map((t) => {
+          {TAB_ORDER.filter((t) => !t.roles || t.roles(role)).map((t) => {
             const isActive = t.key === active;
             return (
               <Link

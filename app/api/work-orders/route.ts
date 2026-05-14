@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getOrCreateAppUser } from "@/lib/auth";
+import { getApiUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmailFireAndForget, workOrderCreatedEmail } from "@/lib/email";
 import { sendPushToUsers } from "@/lib/push";
@@ -19,8 +19,8 @@ const SLA_HOURS: Record<typeof DEFAULT_SLA, number> = {
   normal_72h: 72,
 };
 
-export async function GET() {
-  const session = await getOrCreateAppUser();
+export async function GET(request: NextRequest) {
+  const session = await getApiUser(request);
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const workOrders = await prisma.workOrder.findMany({
@@ -32,7 +32,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getOrCreateAppUser();
+  const session = await getApiUser(request);
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { appUser } = session;

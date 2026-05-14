@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { getApiUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 
 // Persist a Web Push subscription for the current user. Idempotent
@@ -16,7 +16,9 @@ type SubscribeBody = {
 
 export async function POST(request: Request) {
   try {
-    const { appUser } = await requireUser();
+    const session = await getApiUser(request);
+    if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const { appUser } = session;
     const body = (await request.json().catch(() => ({}))) as SubscribeBody;
 
     if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
