@@ -1,8 +1,11 @@
 import { Resend } from "resend";
+import { brand } from "@/lib/brand";
 
 const apiKey = process.env.RESEND_API_KEY;
-const FROM = process.env.RESEND_FROM_EMAIL || "BuildingSync <noreply@buildingsync.app>";
-const APP_URL = process.env.APP_BASE_URL || "https://buildingsync.app";
+const FROM =
+  process.env.RESEND_FROM_EMAIL ||
+  `${brand.name} <noreply@${brand.host.replace(/^www\./, "")}>`;
+const APP_URL = process.env.APP_BASE_URL || `https://${brand.host}`;
 
 const resend = apiKey ? new Resend(apiKey) : null;
 
@@ -36,13 +39,13 @@ const wrap = (inner: string) => `<!doctype html>
 ${inner}
 <hr style="margin-top:32px;border:0;border-top:1px solid #e6dfce;" />
 <p style="margin-top:18px;font-size:11px;color:#999;line-height:1.55;">
-  Sent by <strong style="color:#666;">BuildingSync</strong>, a Node2.io service.<br />
-  You're receiving this because your building uses BuildingSync. Manage notification preferences in your account, or reply to this email if you'd prefer to stop receiving them.
+  Sent by <strong style="color:#666;">${escapeHtml(brand.name)}</strong>${brand.parentAttribution ? `, ${escapeHtml(brand.parentAttribution)}` : ""}.<br />
+  You're receiving this because your building uses ${escapeHtml(brand.name)}. Manage notification preferences in your account, or reply to this email if you'd prefer to stop receiving them.
 </p>
 <p style="margin-top:10px;font-size:11px;color:#999;">
   <a href="${APP_URL}/privacy" style="color:#999;">Privacy Policy</a> &nbsp;·&nbsp;
   <a href="${APP_URL}/terms" style="color:#999;">Terms</a> &nbsp;·&nbsp;
-  <a href="mailto:info@buildingsync.app" style="color:#999;">info@buildingsync.app</a>
+  <a href="mailto:${brand.supportEmail}" style="color:#999;">${escapeHtml(brand.supportEmail)}</a>
 </p>
 </div></body></html>`;
 
@@ -56,7 +59,7 @@ export function welcomeEmail(args: {
   const signInUrl = `${APP_URL}/signin`;
   const roleLabel = role.replace(/_/g, " ");
   const html = wrap(`
-<h1 style="font-size:22px;margin:0 0 8px;">Welcome to BuildingSync</h1>
+<h1 style="font-size:22px;margin:0 0 8px;">Welcome to ${escapeHtml(brand.name)}</h1>
 <p>Your ${roleLabel} account at <strong>${escapeHtml(buildingName || "your building")}</strong> has been created.</p>
 <table style="margin:16px 0;border-collapse:collapse;">
   <tr><td style="padding:6px 12px 6px 0;color:#666;">Email</td><td style="padding:6px 0;font-family:monospace;">${escapeHtml(email)}</td></tr>
@@ -65,9 +68,9 @@ export function welcomeEmail(args: {
 <p><a href="${signInUrl}" style="display:inline-block;background:#141414;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">Sign in</a></p>
 <p style="font-size:13px;color:#666;margin-top:16px;">After signing in, please change your password under <em>Account</em>.</p>`);
   return {
-    subject: `Welcome to BuildingSync${buildingName ? ` — ${buildingName}` : ""}`,
+    subject: `Welcome to ${brand.name}${buildingName ? ` — ${buildingName}` : ""}`,
     html,
-    text: `Welcome to BuildingSync.\n\nEmail: ${email}\nTemporary password: ${password}\n\nSign in at ${signInUrl} and change your password under Account.`,
+    text: `Welcome to ${brand.name}.\n\nEmail: ${email}\nTemporary password: ${password}\n\nSign in at ${signInUrl} and change your password under Account.`,
   };
 }
 
@@ -87,7 +90,7 @@ export function workOrderCreatedEmail(args: {
 <h2 style="font-size:16px;margin:16px 0 4px;">${escapeHtml(title)}</h2>
 <p style="white-space:pre-wrap;">${escapeHtml(description)}</p>
 <p style="font-size:13px;color:#666;margin-top:16px;">Opened by ${escapeHtml(openedByLabel)}</p>
-<p style="margin-top:20px;"><a href="${url}" style="display:inline-block;background:#141414;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">View in BuildingSync</a></p>`);
+<p style="margin-top:20px;"><a href="${url}" style="display:inline-block;background:#141414;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">View in ${escapeHtml(brand.name)}</a></p>`);
   return {
     subject: `[Maintenance] ${title}${unitLabel ? ` · Unit ${unitLabel}` : ""}`,
     html,

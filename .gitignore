@@ -19,6 +19,10 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
+# Standalone .env-style files for one-off secrets (vapid keys, etc.).
+# .env.example is intentionally tracked as the source-of-truth template.
+*.env
+!.env.example
 
 # vercel
 .vercel

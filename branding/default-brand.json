@@ -1,0 +1,21 @@
+{
+  "$comment": "Canonical BuildingSync brand values. Mirrors the defaults baked into lib/brand.ts. White-label customers copy this file into their deployment notes and override via NEXT_PUBLIC_BRAND_* env vars.",
+  "name": "BuildingSync",
+  "shortName": "BuildingSync",
+  "description": "Property management for residents, tenants, and staff.",
+  "supportEmail": "info@buildingsync.app",
+  "host": "www.buildingsync.app",
+  "themeColor": "#141414",
+  "showPoweredBy": true,
+  "parentAttribution": "a Node2.io service",
+  "envMapping": {
+    "name": "NEXT_PUBLIC_BRAND_NAME",
+    "shortName": "NEXT_PUBLIC_BRAND_SHORT_NAME",
+    "description": "NEXT_PUBLIC_BRAND_DESCRIPTION",
+    "supportEmail": "NEXT_PUBLIC_BRAND_SUPPORT_EMAIL",
+    "host": "NEXT_PUBLIC_BRAND_HOST",
+    "themeColor": "NEXT_PUBLIC_BRAND_THEME_COLOR",
+    "showPoweredBy": "NEXT_PUBLIC_BRAND_SHOW_POWERED_BY",
+    "parentAttribution": "NEXT_PUBLIC_BRAND_PARENT_ATTRIBUTION"
+  }
+}

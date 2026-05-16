@@ -6,42 +6,17 @@ import { SignOutButton } from "@/components/SignOutButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/AccountMenu";
 import { AccessibilityMenu } from "@/components/AccessibilityMenu";
+import { HeaderIcon } from "@/components/HeaderIcon";
 import { PortalNavL1, PortalNavL2 } from "@/components/PortalNav";
 import { roleLabel } from "@/components/RoleBadge";
 import type { NotificationItem } from "@/components/NotificationBell";
 import { getLocale } from "@/lib/locale-server";
 
 // Unified post-login chrome. Refined toward the v2 R&D header pattern:
-// cleaner Wordmark + tabs row, plus an icon cluster on the right
-// (Search · AI · Accessibility · Bell · Theme · Avatar). Search and
-// AI route to placeholder pages until those features ship.
-
-function HeaderIcon({
-  href,
-  label,
-  children,
-  badge,
-}: {
-  href: string;
-  label: string;
-  children: React.ReactNode;
-  badge?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="relative w-9 h-9 hidden md:inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-    >
-      {children}
-      {badge && (
-        <span className="absolute -top-1 -right-1 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-amber-500 text-amber-950">
-          {badge}
-        </span>
-      )}
-    </Link>
-  );
-}
+// utility bar (wordmark + portal label · search · AI · accessibility ·
+// bell · theme · avatar) with a section-bar below holding L1 + L2 pill
+// nav and a position breadcrumb. Search and AI route to placeholder
+// pages until those features ship.
 
 export async function PortalShell({
   portalLabel,
