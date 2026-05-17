@@ -25,6 +25,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@buildingsync/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@buildingsync/core/*": [
+        "./packages/core/src/*"
       ]
     }
   },

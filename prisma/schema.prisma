@@ -544,6 +544,50 @@ model Delivery {
 // Per-building enterprise license. SaaS customers get a row managed
 // by the platform; on-prem customers paste a signed key. Validation
 // + heartbeat live in lib/license.ts.
+// On-prem appliance license records. Distinct from `License` (which is
+// per-building SaaS licensing) — this one tracks per-appliance licenses
+// issued to on-prem customers, with appliance fingerprint, last
+// check-in, and revocation. The appliance POSTs to
+// /api/onprem/license/verify on a 24h cadence; this row is the
+// source of truth for what it gets back.
+model OnpremLicense {
+  id                  String    @id @default(uuid())
+  // The opaque license string customers paste into their appliance's
+  // .env. Format: bsk_live_<base32>. Index for fast lookup.
+  licenseKey          String    @unique
+  customerOrg         String
+  contactEmail        String
+  // Free-text — for admins to remember why this license exists.
+  notes               String?
+  // Hard cap on what features the appliance is allowed to run.
+  // String[] for forward-compat with future features.
+  features            String[]  @default([])
+  maxBuildings        Int       @default(10)
+  maxUnits            Int       @default(1000)
+  // Set on issuance. After this date, verify returns valid=false.
+  expiresAt           DateTime
+  // Set when admin revokes mid-term (refund, contract terminated).
+  // verify returns valid=false with reason="revoked".
+  revokedAt           DateTime?
+  revokedReason       String?
+  // Per-appliance identity, set on first successful verify call.
+  // Subsequent calls with a different fingerprint return
+  // fingerprint_mismatch (defends against license-key sharing).
+  applianceId         String?
+  applianceFingerprint String?
+  // Observability — what the appliance reported on last check-in.
+  lastCheckedAt       DateTime?
+  lastReportedVersion String?
+  lastReportedIp      String?
+  // Audit
+  issuedById          String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([customerOrg])
+  @@index([expiresAt])
+}
+
 model License {
   id              String   @id
   buildingId      String?  @unique
