@@ -50,3 +50,8 @@ build-*.log
 
 # package-lock kept untracked to mirror R&D convention
 package-lock.json
+
+# on-prem SKU lives in a separate private repo (BuildingSync-Onprem).
+# Block any local onprem/ folder from being committed back into this
+# (public-ish) repo by accident.
+/onprem/
