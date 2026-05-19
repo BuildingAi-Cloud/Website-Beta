@@ -16,10 +16,35 @@ export async function getOrCreateAppUser(): Promise<{ authUser: AuthUser; appUse
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !user.email) return null;
 
+  // Pull signup metadata that we persist to the Prisma User row on
+  // first creation. Subsequent logins don't overwrite these — users
+  // can edit them in /dashboard/account.
+  const meta = user.user_metadata ?? {};
+  const signupExtras = {
+    name: typeof meta.full_name === "string" ? meta.full_name : undefined,
+    phone: typeof meta.phone === "string" && meta.phone ? meta.phone : undefined,
+    region: typeof meta.region === "string" ? meta.region : undefined,
+    postalCode: typeof meta.postal_code === "string" && meta.postal_code ? meta.postal_code : undefined,
+    city: typeof meta.city === "string" && meta.city ? meta.city : undefined,
+    latitude: typeof meta.latitude === "number" ? meta.latitude : undefined,
+    longitude: typeof meta.longitude === "number" ? meta.longitude : undefined,
+    company: typeof meta.company_name === "string" && meta.company_name ? meta.company_name : undefined,
+    managerType: typeof meta.manager_type === "string" && meta.manager_type ? meta.manager_type : undefined,
+    businessNumber: typeof meta.business_number === "string" && meta.business_number ? meta.business_number : undefined,
+    licenseNumber: typeof meta.license_number === "string" && meta.license_number ? meta.license_number : undefined,
+  };
+  // BMs land as "resident" by default to avoid privilege escalation
+  // via metadata. Platform admin promotes to "building_manager" after
+  // verifying the business registration / CMRAO licence.
   let appUser = await prisma.user.upsert({
     where: { id: user.id },
     update: { email: user.email },
-    create: { id: user.id, email: user.email, role: "resident" },
+    create: {
+      id: user.id,
+      email: user.email,
+      role: "resident",
+      ...signupExtras,
+    },
   });
 
   // First-touch invite-code application. The signup flow stores the

@@ -14,8 +14,14 @@ export default async function PlatformDashboard() {
     // the queue acts FIFO. archivedAt:null filter excludes already-rejected.
     prisma.user.findMany({
       where: { role: "building_manager", verifiedAt: null, archivedAt: null },
-      select: { id: true, email: true, name: true, createdAt: true, buildingId: true,
-                building: { select: { name: true } } },
+      select: {
+        id: true, email: true, name: true, createdAt: true, buildingId: true,
+        building: { select: { name: true } },
+        // BM verification fields captured at signup. Reviewer uses
+        // these to cross-check Ontario Business Registry + CMRAO.
+        company: true, managerType: true, businessNumber: true, licenseNumber: true,
+        region: true, city: true, postalCode: true,
+      },
       orderBy: { createdAt: "asc" },
     }),
     prisma.building.findMany({
@@ -55,22 +61,90 @@ export default async function PlatformDashboard() {
           </div>
           <div className="bg-card border border-amber-500/30 rounded-md overflow-hidden">
             <ul className="divide-y divide-border">
-              {pendingBMs.map((u) => (
-                <li key={u.id} className="px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={u.name} email={u.email} />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{u.name || u.email}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {u.email}
-                        {u.building?.name && <span> · {u.building.name}</span>}
-                        <span> · signed up {formatRelative(u.createdAt)}</span>
+              {pendingBMs.map((u) => {
+                // Build the quick-verify links: OBR (Ontario Business
+                // Registry) search by company name; CMRAO licensee
+                // search by licence number. Reviewer clicks → confirms
+                // → approves.
+                const obrUrl = u.company
+                  ? `https://www.appmybizaccount.gov.on.ca/onbis/search?searchValue=${encodeURIComponent(u.company)}`
+                  : null;
+                const cmraoUrl = u.licenseNumber
+                  ? `https://www.cmrao.ca/find-a-registrant?q=${encodeURIComponent(u.licenseNumber)}`
+                  : "https://www.cmrao.ca/find-a-registrant";
+                const corpsCanadaUrl = u.businessNumber
+                  ? `https://www.ic.gc.ca/app/scr/cc/CorporationsCanada/fdrlCrpSrch.html?searchValue=${encodeURIComponent(u.businessNumber)}`
+                  : null;
+
+                return (
+                  <li key={u.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <Avatar name={u.name} email={u.email} />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div>
+                          <div className="font-medium truncate">{u.name || u.email}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {u.email}
+                            {u.building?.name && <span> · {u.building.name}</span>}
+                            <span> · signed up {formatRelative(u.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        {/* Verification facts captured at signup. */}
+                        <div className="text-xs space-y-1 bg-muted/30 border border-border rounded-md p-3">
+                          <div>
+                            <span className="text-muted-foreground">Company: </span>
+                            <span className="font-medium text-foreground">{u.company || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Type: </span>
+                            <span className="text-foreground">
+                              {u.managerType ? u.managerType.replace(/_/g, " ") : "—"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">BN: </span>
+                            <span className="font-mono text-foreground">{u.businessNumber || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">CMRAO licence: </span>
+                            <span className="font-mono text-foreground">{u.licenseNumber || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Region: </span>
+                            <span className="text-foreground">
+                              {u.region || "—"}{u.city ? ` · ${u.city}` : ""}{u.postalCode ? ` · ${u.postalCode}` : ""}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* One-click verification links. */}
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {obrUrl && (
+                            <a href={obrUrl} target="_blank" rel="noopener noreferrer"
+                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm border border-border bg-background hover:bg-muted transition-colors">
+                              Search OBR (company) →
+                            </a>
+                          )}
+                          {corpsCanadaUrl && (
+                            <a href={corpsCanadaUrl} target="_blank" rel="noopener noreferrer"
+                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm border border-border bg-background hover:bg-muted transition-colors">
+                              Search Corporations Canada (BN) →
+                            </a>
+                          )}
+                          {u.managerType === "cmrao_licensed" && (
+                            <a href={cmraoUrl} target="_blank" rel="noopener noreferrer"
+                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm border border-border bg-background hover:bg-muted transition-colors">
+                              Look up CMRAO registrant →
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <VerificationActions userId={u.id} email={u.email} />
-                </li>
-              ))}
+                    <VerificationActions userId={u.id} email={u.email} />
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </section>

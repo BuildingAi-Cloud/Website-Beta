@@ -7,6 +7,47 @@ import { z } from "zod";
 import { requireTeam } from "@/lib/team";
 import { prisma } from "@/lib/prisma";
 import { logAuditFireAndForget } from "@/lib/audit";
+import {
+  detectPostalKind,
+  normalizeCanadian,
+  regionFromCanadianPostal,
+} from "@/lib/postal";
+
+// Province name → ISO 3166-2 region code, used to cross-check the
+// postal code the BM entered against the province they selected.
+// Mismatch is a soft block — postal districts sometimes span borders,
+// but most mismatches are typos worth catching at creation time.
+const PROVINCE_TO_REGION: Record<string, string> = {
+  ontario: "CA-ON",
+  on: "CA-ON",
+  quebec: "CA-QC",
+  qc: "CA-QC",
+  "québec": "CA-QC",
+  "british columbia": "CA-BC",
+  bc: "CA-BC",
+  alberta: "CA-AB",
+  ab: "CA-AB",
+  manitoba: "CA-MB",
+  mb: "CA-MB",
+  saskatchewan: "CA-SK",
+  sk: "CA-SK",
+  "nova scotia": "CA-NS",
+  ns: "CA-NS",
+  "new brunswick": "CA-NB",
+  nb: "CA-NB",
+  newfoundland: "CA-NL",
+  "newfoundland and labrador": "CA-NL",
+  nl: "CA-NL",
+  "prince edward island": "CA-PE",
+  pe: "CA-PE",
+  pei: "CA-PE",
+  yukon: "CA-YT",
+  yt: "CA-YT",
+  "northwest territories": "CA-NT",
+  nt: "CA-NT",
+  nunavut: "CA-NU",
+  nu: "CA-NU",
+};
 
 const Body = z.object({
   name: z.string().trim().min(1).max(120),
@@ -46,6 +87,26 @@ export async function createTeamBuilding(_prev: unknown, formData: FormData): Pr
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+  }
+
+  // Postal-code cross-check against the entered province. Canadian
+  // postal codes encode province in the first letter; mismatches are
+  // usually typos. Hard-fail on Canadian-format mismatch; skip the
+  // check for US / international postal codes.
+  const postalKind = detectPostalKind(parsed.data.zipCode);
+  if (postalKind === "ca") {
+    const inferred = regionFromCanadianPostal(parsed.data.zipCode);
+    const claimed = PROVINCE_TO_REGION[parsed.data.state.trim().toLowerCase()] ?? null;
+    if (inferred && claimed && inferred !== claimed) {
+      return {
+        ok: false,
+        error: `Postal code ${normalizeCanadian(parsed.data.zipCode)} is in ${inferred} but you entered the province as ${parsed.data.state}. Double-check the address before continuing.`,
+      };
+    }
+    // Normalise to canonical "A1A 1A1" form on save.
+    parsed.data.zipCode = normalizeCanadian(parsed.data.zipCode);
+  } else if (postalKind === "invalid") {
+    return { ok: false, error: "Postal code format doesn't look right." };
   }
 
   const buildingId = randomUUID();

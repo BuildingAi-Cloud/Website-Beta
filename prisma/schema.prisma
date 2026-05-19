@@ -133,6 +133,33 @@ model User {
   notifyEmail     Boolean   @default(true)
   notifySms       Boolean   @default(false)
   notifyInApp     Boolean   @default(true)
+  // Jurisdiction the user signed up under (ISO 3166-2 subdivision
+  // code, e.g. "CA-ON"). Drives /legal page defaults, currency/date
+  // formatting, applicable notice templates. Captured at signup;
+  // editable in /dashboard/account.
+  region          String?
+  // Address bits captured at signup. For residents/tenants these
+  // typically match their building. For Building Managers they're
+  // the management company's registered address. Used for postal-
+  // code-to-region validation + building address cross-check.
+  postalCode      String?
+  city            String?
+  // Approximate lat/lng from the signup location picker (reverse-
+  // geocoded). Used for "verify on map" UX, not for routing.
+  latitude        Float?
+  longitude       Float?
+  // BM-only verification fields. Surfaced in /platform/verifications
+  // so the platform admin can confirm against the Ontario Business
+  // Registry (OBR) and CMRAO licensee database before flipping
+  // verifiedAt to allow the BM into /team.
+  // - managerType: self_managed | incorporated | management_firm | cmrao_licensed
+  // - businessNumber: federal 9-digit BN, optional program suffix
+  //   (e.g. "123456789RC0001"). Verifiable at corporations.ic.gc.ca.
+  // - licenseNumber: CMRAO licence for Ontario condo managers
+  //   (mandatory under the CMSA, 2015). Verifiable at cmrao.ca.
+  managerType     String?
+  businessNumber  String?
+  licenseNumber   String?
   // Set when admin verifies a building_manager signup. Other roles are
   // auto-verified — gate only applies to BM. Null = pending review.
   verifiedAt      DateTime?

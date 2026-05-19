@@ -5,6 +5,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { AuthShell } from "@/components/AuthShell";
+import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import { validatePostalAgainstRegion } from "@/lib/postal";
 
 function normalizeInviteCode(input: string): string {
   return input.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
@@ -21,28 +23,53 @@ function passwordStrength(pw: string): { score: 0 | 1 | 2 | 3 | 4; label: string
   return { score: score as 0 | 1 | 2 | 3 | 4, label };
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 const STEPS: { n: Step; label: string }[] = [
   { n: 1, label: "Account" },
   { n: 2, label: "About you" },
-  { n: 3, label: "Verify" },
+  { n: 3, label: "Location" },
+  { n: 4, label: "Verify" },
 ];
+
+type RoleIntent = "resident_or_tenant" | "building_manager" | "other";
+
+const DEFAULT_LOCATION: LocationValue = {
+  postalCode: "",
+  city: "",
+  region: "CA-ON",
+  latitude: null,
+  longitude: null,
+};
 
 export default function SignUpPage() {
   const supabase = createClient();
   const [step, setStep] = useState<Step>(1);
+
+  // Account
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Profile
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [roleIntent, setRoleIntent] = useState<RoleIntent>("resident_or_tenant");
+
+  // BM-only verification fields
+  const [companyName, setCompanyName] = useState("");
+  const [managerType, setManagerType] = useState("");
+  const [businessNumber, setBusinessNumber] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+
+  // Location
+  const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
+
+  // Verify
   const [isHuman, setIsHuman] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
-  // Honeypot field — bots typically fill it; humans never see it.
   const [companyHoneypot, setCompanyHoneypot] = useState("");
 
-  // Pull ?code= from the URL on mount so a BM-shared link prefills it.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
@@ -54,18 +81,32 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
 
   const strength = useMemo(() => passwordStrength(password), [password]);
+  const postalIssue = useMemo(
+    () => (location.postalCode ? validatePostalAgainstRegion(location.postalCode, location.region) : null),
+    [location.postalCode, location.region],
+  );
+
+  const isBM = roleIntent === "building_manager";
 
   const canStepOneNext = email.trim().length > 0 && strength.score >= 1;
-  const canStepTwoNext = name.trim().length > 0;
+  const canStepTwoNext =
+    name.trim().length > 0 &&
+    (!isBM || (companyName.trim().length > 0 && managerType.length > 0));
+  // Location: required for BMs (verification needs an address); optional
+  // for residents who joined via invite code (they inherit the building's
+  // address). Required for residents without an invite code.
+  const canStepThreeNext = isBM || inviteCode
+    ? (isBM ? location.postalCode.trim().length > 0 && location.city.trim().length > 0 : true)
+    : location.postalCode.trim().length > 0;
   const canSubmit = isHuman && agreedTerms && companyHoneypot === "";
 
   function next() {
     if (step === 1 && canStepOneNext) setStep(2);
     else if (step === 2 && canStepTwoNext) setStep(3);
+    else if (step === 3 && canStepThreeNext) setStep(4);
   }
   function back() {
-    if (step === 2) setStep(1);
-    else if (step === 3) setStep(2);
+    if (step > 1) setStep((step - 1) as Step);
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -83,9 +124,25 @@ export default function SignUpPage() {
         data: {
           full_name: name,
           phone: phone || null,
-          // Picked up server-side by getOrCreateAppUser to auto-link
-          // the new account to the right building on first auth.
           invite_code: code && code.length === 6 ? code : null,
+          // New fields — persisted to Prisma User on first auth via
+          // lib/auth.ts getOrCreateAppUser.
+          role_intent: roleIntent,
+          region: location.region,
+          postal_code: location.postalCode || null,
+          city: location.city || null,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          // BM verification fields — admin reviews these in
+          // /platform/verifications before flipping verifiedAt.
+          ...(isBM
+            ? {
+                company_name: companyName,
+                manager_type: managerType,
+                business_number: businessNumber || null,
+                license_number: licenseNumber || null,
+              }
+            : {}),
         },
       },
     });
@@ -105,6 +162,7 @@ export default function SignUpPage() {
           Sign in
         </Link>
       }
+      width="wide"
     >
       <div>
         <div className="bg-card border border-border rounded-xl p-6 sm:p-8 shadow-sm">
@@ -135,14 +193,28 @@ export default function SignUpPage() {
                       name={name} setName={setName}
                       phone={phone} setPhone={setPhone}
                       inviteCode={inviteCode} setInviteCode={setInviteCode}
+                      roleIntent={roleIntent} setRoleIntent={setRoleIntent}
+                      companyName={companyName} setCompanyName={setCompanyName}
+                      managerType={managerType} setManagerType={setManagerType}
+                      businessNumber={businessNumber} setBusinessNumber={setBusinessNumber}
+                      licenseNumber={licenseNumber} setLicenseNumber={setLicenseNumber}
                     />
                   )}
                   {step === 3 && (
+                    <StepLocation
+                      location={location} setLocation={setLocation}
+                      postalIssue={postalIssue}
+                      isBM={isBM}
+                      hasInviteCode={!!inviteCode}
+                    />
+                  )}
+                  {step === 4 && (
                     <StepVerify
                       isHuman={isHuman} setIsHuman={setIsHuman}
                       agreedTerms={agreedTerms} setAgreedTerms={setAgreedTerms}
                       companyHoneypot={companyHoneypot} setCompanyHoneypot={setCompanyHoneypot}
                       email={email}
+                      isBM={isBM}
                     />
                   )}
 
@@ -166,11 +238,15 @@ export default function SignUpPage() {
                     >
                       ← Back
                     </button>
-                    {step < 3 ? (
+                    {step < 4 ? (
                       <button
                         type="button"
                         onClick={next}
-                        disabled={(step === 1 && !canStepOneNext) || (step === 2 && !canStepTwoNext)}
+                        disabled={
+                          (step === 1 && !canStepOneNext) ||
+                          (step === 2 && !canStepTwoNext) ||
+                          (step === 3 && !canStepThreeNext)
+                        }
                         className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground px-4 py-2 rounded-md text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         Continue →
@@ -205,8 +281,6 @@ export default function SignUpPage() {
           <Link href="/privacy" className="hover:text-foreground transition-colors underline underline-offset-2">Privacy Policy</Link>.
         </p>
 
-        {/* Off-ramp for buyers who need data residency, SSO, or single-tenant
-            infrastructure. Sales conversation, not a self-serve toggle. */}
         <div className="mt-4 text-center">
           <Link
             href="/enterprise"
@@ -332,8 +406,19 @@ function StepProfile(props: {
   name: string; setName: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
   inviteCode: string; setInviteCode: (v: string) => void;
+  roleIntent: RoleIntent; setRoleIntent: (v: RoleIntent) => void;
+  companyName: string; setCompanyName: (v: string) => void;
+  managerType: string; setManagerType: (v: string) => void;
+  businessNumber: string; setBusinessNumber: (v: string) => void;
+  licenseNumber: string; setLicenseNumber: (v: string) => void;
 }) {
-  const { name, setName, phone, setPhone, inviteCode, setInviteCode } = props;
+  const {
+    name, setName, phone, setPhone, inviteCode, setInviteCode,
+    roleIntent, setRoleIntent,
+    companyName, setCompanyName, managerType, setManagerType,
+    businessNumber, setBusinessNumber, licenseNumber, setLicenseNumber,
+  } = props;
+  const isBM = roleIntent === "building_manager";
   return (
     <>
       <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Tell us about you</h1>
@@ -360,22 +445,172 @@ function StepProfile(props: {
       </div>
 
       <div>
-        <label htmlFor="inviteCode" className="block text-sm font-medium text-foreground mb-1.5">
-          Building invite code <span className="text-muted-foreground/85 font-normal">(optional)</span>
-        </label>
-        <input
-          id="inviteCode" type="text" maxLength={6} placeholder="e.g. ABCDEF"
-          value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-          autoCapitalize="characters"
-          autoComplete="off"
-          className={`${inputClass} font-mono tracking-widest uppercase`}
-        />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Got a code from your Building Manager? Enter it to auto-link your account. Otherwise leave blank
-          and your BM can add you manually later.
-        </p>
+        <label className="block text-sm font-medium text-foreground mb-1.5">I&apos;m signing up as</label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {(
+            [
+              { value: "resident_or_tenant", label: "Resident / tenant", hint: "I live in the building" },
+              { value: "building_manager", label: "Building manager", hint: "I manage the building" },
+              { value: "other", label: "Other", hint: "Vendor, contractor, etc." },
+            ] as Array<{ value: RoleIntent; label: string; hint: string }>
+          ).map((opt) => (
+            <label
+              key={opt.value}
+              className={`block cursor-pointer border rounded-md p-3 transition-colors ${
+                roleIntent === opt.value
+                  ? "border-accent bg-accent/5"
+                  : "border-border hover:border-border/80 hover:bg-muted/30"
+              }`}
+            >
+              <input
+                type="radio"
+                name="roleIntent"
+                value={opt.value}
+                checked={roleIntent === opt.value}
+                onChange={() => setRoleIntent(opt.value)}
+                className="sr-only"
+              />
+              <span className="block text-sm font-semibold text-foreground">{opt.label}</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">{opt.hint}</span>
+            </label>
+          ))}
+        </div>
       </div>
+
+      {isBM ? (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 space-y-3"
+        >
+          <p className="text-sm text-foreground">
+            <strong>Building Manager accounts are verified by our admin team</strong> against
+            the Ontario Business Registry (and CMRAO for condo managers) before activation.
+            Provide the details below — they help us turn around the review faster.
+          </p>
+          <div>
+            <label htmlFor="companyName" className="block text-sm font-medium text-foreground mb-1.5">
+              Management company name
+            </label>
+            <input
+              id="companyName" type="text" required maxLength={120} placeholder="Acme Property Management Inc."
+              value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="managerType" className="block text-sm font-medium text-foreground mb-1.5">
+              Manager type
+            </label>
+            <select
+              id="managerType" required
+              value={managerType} onChange={(e) => setManagerType(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Choose one…</option>
+              <option value="cmrao_licensed">Licensed condo manager (CMRAO, Ontario)</option>
+              <option value="management_firm">Incorporated property management firm</option>
+              <option value="incorporated">Incorporated landlord (own buildings)</option>
+              <option value="self_managed">Self-managing landlord (small portfolio)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="businessNumber" className="block text-sm font-medium text-foreground mb-1.5">
+              Business Number (BN) <span className="text-muted-foreground/85 font-normal">(if incorporated)</span>
+            </label>
+            <input
+              id="businessNumber" type="text" maxLength={20}
+              placeholder="123456789RC0001"
+              value={businessNumber} onChange={(e) => setBusinessNumber(e.target.value)}
+              className={`${inputClass} font-mono`}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Federal 9-digit Business Number. Verifiable at corporations.ic.gc.ca.
+            </p>
+          </div>
+          <div>
+            <label htmlFor="licenseNumber" className="block text-sm font-medium text-foreground mb-1.5">
+              CMRAO licence number <span className="text-muted-foreground/85 font-normal">(condo managers in Ontario)</span>
+            </label>
+            <input
+              id="licenseNumber" type="text" maxLength={20}
+              placeholder="L1234567"
+              value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)}
+              className={`${inputClass} font-mono`}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Required under the Condominium Management Services Act, 2015. Verifiable at cmrao.ca.
+            </p>
+          </div>
+        </motion.div>
+      ) : (
+        <div>
+          <label htmlFor="inviteCode" className="block text-sm font-medium text-foreground mb-1.5">
+            Building invite code <span className="text-muted-foreground/85 font-normal">(optional)</span>
+          </label>
+          <input
+            id="inviteCode" type="text" maxLength={6} placeholder="e.g. ABCDEF"
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+            autoCapitalize="characters"
+            autoComplete="off"
+            className={`${inputClass} font-mono tracking-widest uppercase`}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Got a code from your Building Manager? Enter it to auto-link your account. Otherwise leave blank
+            and your BM can add you manually later.
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+function StepLocation({
+  location,
+  setLocation,
+  postalIssue,
+  isBM,
+  hasInviteCode,
+}: {
+  location: LocationValue;
+  setLocation: (v: LocationValue) => void;
+  postalIssue: ReturnType<typeof validatePostalAgainstRegion>;
+  isBM: boolean;
+  hasInviteCode: boolean;
+}) {
+  return (
+    <>
+      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+        {isBM ? "Where do you operate?" : "Where do you live?"}
+      </h1>
+      <p className="text-sm text-muted-foreground -mt-1">
+        {isBM
+          ? "We verify your management company's address against the Ontario Business Registry. Drop a pin or type below."
+          : hasInviteCode
+          ? "Optional — your invite code already links you to a building. Add your location to help your building team confirm you."
+          : "Tap on the map to mark your address, or fill the fields below. We'll match this to a building once your manager adds you."}
+      </p>
+
+      <LocationPicker value={location} onChange={setLocation} />
+
+      {postalIssue && postalIssue.kind === "region_mismatch" && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+          <p className="text-amber-700 dark:text-amber-400">{postalIssue.message}</p>
+          <button
+            type="button"
+            onClick={() => setLocation({ ...location, region: postalIssue.suggestedRegion })}
+            className="mt-2 text-xs text-accent hover:underline"
+          >
+            Switch region to {postalIssue.suggestedRegion} →
+          </button>
+        </div>
+      )}
+      {postalIssue && postalIssue.kind === "format" && (
+        <div className="rounded-md border border-red-500/40 bg-red-500/5 p-3 text-sm text-red-600 dark:text-red-400">
+          {postalIssue.message}
+        </div>
+      )}
     </>
   );
 }
@@ -385,16 +620,28 @@ function StepVerify(props: {
   agreedTerms: boolean; setAgreedTerms: (v: boolean) => void;
   companyHoneypot: string; setCompanyHoneypot: (v: string) => void;
   email: string;
+  isBM: boolean;
 }) {
-  const { isHuman, setIsHuman, agreedTerms, setAgreedTerms, companyHoneypot, setCompanyHoneypot, email } = props;
+  const { isHuman, setIsHuman, agreedTerms, setAgreedTerms, companyHoneypot, setCompanyHoneypot, email, isBM } = props;
   return (
     <>
       <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Quick check</h1>
       <p className="text-sm text-muted-foreground -mt-1">
-        We&apos;ll send a confirmation link to <span className="text-foreground font-medium">{email}</span> after this.
+        We&apos;ll send a confirmation link to <span className="text-foreground font-medium">{email}</span> — click it to verify your address.
       </p>
 
-      {/* Honeypot — hidden from real users via aria + position; bots fill it. */}
+      {isBM && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+          <p className="font-semibold text-foreground">One more step for Building Managers</p>
+          <p className="mt-1 text-muted-foreground leading-relaxed">
+            After you confirm your email, our admin team will verify your management
+            company against the Ontario Business Registry (and CMRAO for condo
+            managers) before unlocking the staff portal. Typical turnaround: one
+            business day.
+          </p>
+        </div>
+      )}
+
       <div aria-hidden="true" className="absolute -left-2500 top-auto w-px h-px overflow-hidden">
         <label>
           Company website (leave blank)
