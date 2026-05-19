@@ -1,0 +1,52 @@
+name: sync-openapi
+# Push openapi.yaml changes from BuildingSync-Web (canonical source)
+# to BuildingSync-OpenAPI. One-directional. If you ever need to edit
+# the spec, edit it HERE — it'll propagate.
+#
+# Requires repo secret: PAT_TOKEN_FOR_PUSH
+#   A fine-grained PAT with write access to BuildingAi-Cloud/BuildingSync-OpenAPI.
+#   Generate at https://github.com/settings/tokens?type=beta — scope to the
+#   target repo only. Re-roll on schedule per your secret-rotation policy.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - public/openapi.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Clone BuildingSync-OpenAPI
+        env:
+          PAT: ${{ secrets.PAT_TOKEN_FOR_PUSH }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "::error::PAT_TOKEN_FOR_PUSH secret not set. Add it in repo Settings → Secrets → Actions."
+            exit 1
+          fi
+          git clone "https://x-access-token:${PAT}@github.com/BuildingAi-Cloud/BuildingSync-OpenAPI.git" target
+
+      - name: Copy spec
+        run: cp public/openapi.yaml target/openapi.yaml
+
+      - name: Commit + push if changed
+        working-directory: target
+        run: |
+          git config user.name "buildingsync-web-bot"
+          git config user.email "noreply@buildingsync.app"
+          if git diff --quiet openapi.yaml; then
+            echo "Spec unchanged. Nothing to push."
+            exit 0
+          fi
+          UPSTREAM_SHA="${GITHUB_SHA:0:7}"
+          git add openapi.yaml
+          git commit -m "sync: openapi.yaml from BuildingSync-Web@${UPSTREAM_SHA}"
+          git push origin main

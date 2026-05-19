@@ -1,0 +1,52 @@
+name: sync-core
+# Push packages/core/* changes from BuildingSync-Web (canonical source)
+# to BuildingSync-Core. One-directional. Uses git-subtree-split so the
+# Core repo's history reflects the originating commits.
+#
+# Requires repo secret: PAT_TOKEN_FOR_PUSH
+#   Fine-grained PAT with write access to BuildingAi-Cloud/BuildingSync-Core.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/core/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # subtree split needs full history; shallow clones lose the
+          # ancestry that lets us replay only prefix-touching commits.
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "buildingsync-web-bot"
+          git config user.email "noreply@buildingsync.app"
+
+      - name: Split packages/core history
+        run: git subtree split --prefix=packages/core -b core-sync-${{ github.run_id }}
+
+      - name: Push to BuildingSync-Core
+        env:
+          PAT: ${{ secrets.PAT_TOKEN_FOR_PUSH }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "::error::PAT_TOKEN_FOR_PUSH secret not set."
+            exit 1
+          fi
+          # Fast-forward only. Subtree split SHAs are deterministic for
+          # the same input commits, so successive splits produce a
+          # straight-line history that fast-forwards over the previous
+          # Core main. If push is rejected, someone has hand-edited the
+          # Core repo — that's a bug to surface, not silently overwrite.
+          git push \
+            "https://x-access-token:${PAT}@github.com/BuildingAi-Cloud/BuildingSync-Core.git" \
+            "core-sync-${{ github.run_id }}:main"

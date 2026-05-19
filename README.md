@@ -35,3 +35,34 @@ Admin: BM roster + invite, FM work-order queue, Concierge package log.
 PWA: installable on mobile.
 
 Out of R1 (lives in R&D): AI chat, governance, vendor portal, owner banks, OCR, marketplace, audit log UI, i18n, Stripe Connect.
+
+## Sibling repos in this product family
+
+| Repo                        | Role                                                                  |
+| --------------------------- | --------------------------------------------------------------------- |
+| **BuildingSync-Web** (here) | Cloud SKU — Next.js app on Vercel. **Canonical source.**             |
+| BuildingSync-Onprem         | On-premise / air-gapped SKU (private)                                 |
+| BuildingSync-Core           | Shared domain code package — mirrored from `packages/core/` here     |
+| BuildingSync-OpenAPI        | API spec + generated TS/Swift/Kotlin clients — mirrored from `public/openapi.yaml` here |
+| BuildingSync-iOS            | Native iOS client (SwiftUI)                                           |
+| BuildingSync-Android        | Native Android client (Kotlin + Compose)                              |
+| BuildingSync-Mobile         | TBD — shared React Native shell or retire                             |
+| BuildingSync-Brand          | Brand assets — SVG marks, palette, typography                         |
+| BuildingSync-Architecture   | Product architecture docs, persona maps, ticket plans                 |
+| BuildingSync-Lab            | R&D — phased / experimental work                                      |
+
+### Sync model
+
+This repo is the **single source of truth** for code that ships to the live cloud
+app at https://www.buildingsync.app. Two paths automatically replicate
+canonical artefacts to their downstream repos:
+
+- `public/openapi.yaml` changes → `BuildingSync-OpenAPI/openapi.yaml`
+  via [.github/workflows/sync-openapi.yml](.github/workflows/sync-openapi.yml)
+- `packages/core/**` changes → `BuildingSync-Core` (root) via
+  [.github/workflows/sync-core.yml](.github/workflows/sync-core.yml)
+
+Both workflows require a `PAT_TOKEN_FOR_PUSH` repo secret with write
+access to the target repos. **Never edit the OpenAPI spec or Core
+package directly in their mirror repos** — edit them here and let the
+sync workflow propagate.
