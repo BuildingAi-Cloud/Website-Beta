@@ -1,8 +1,65 @@
-# BuildingSync — Web (R1 production)
+# BuildingSync
 
-Cloud SKU. Next.js 16 + Supabase + Prisma + Stripe Checkout, deployed on Vercel.
+**The everyday app for residential buildings.**
 
-> R&D and phased development happens in `BuildingAi-Cloud/BuildingSync-Lab`. This repo is the narrow production cut. Port forward; don't bidirectional-merge. The on-prem SKU lives at `BuildingAi-Cloud/BuildingSync-Onprem` (private).
+Residents report maintenance, read building announcements, pick up
+packages, book the party room, and pay rent — all in one place.
+Building staff handle the same things from a single dashboard.
+
+→ Try it at **[www.buildingsync.app](https://www.buildingsync.app)**
+
+---
+
+## What's in the app
+
+| For residents and tenants                                  | For building staff                                       |
+| ---------------------------------------------------------- | -------------------------------------------------------- |
+| Report a maintenance problem and track it to resolution    | One queue of every open work order in the building       |
+| Get building announcements in the app + by email           | Post announcements to everyone, only tenants, or specific units |
+| Pickup codes for packages waiting at the front desk        | Log packages with one tap; auto-notify the recipient     |
+| Book the party room, BBQ, gym, guest suite                 | See the full booking schedule, prevent double-bookings   |
+| Pay rent securely from your phone                          | Track payments, generate receipts                         |
+| Find building documents — bylaws, fire plans, rules        | Upload and version-control building documents            |
+| See community events and RSVP                              | Plan and post events; track who's coming                 |
+
+Plus: works on phones, tablets, and computers — no app store
+download needed. Add to your home screen for one-tap access.
+Accessible by default: large-text and high-contrast modes built in.
+
+## Who it's for
+
+- **Residents and tenants** — sign in, see everything that matters
+  about your building in one place
+- **Building managers** — run the building from one screen, replace
+  five other tools
+- **Facility managers and concierge** — handle work orders and
+  packages without paper or shared inboxes
+- **Property management firms** — manage multiple buildings from
+  one account
+
+## Pricing
+
+Free for residents. Buildings pay $2.50 per unit per month, with
+the first 90 days free. Enterprise and on-premise options available
+for larger portfolios and government / healthcare deployments.
+See [details for property managers →](https://www.buildingsync.app/for-property-managers)
+
+## Other ways to reach BuildingSync
+
+- **iPhone + iPad**: a native iOS app is in development. For now
+  use [www.buildingsync.app](https://www.buildingsync.app) in Safari —
+  it installs as an app via Share → Add to Home Screen.
+- **Android**: same — works in Chrome and installs from the menu.
+- **Help**: [Help Centre](https://www.buildingsync.app/docs) ·
+  [info@buildingsync.app](mailto:info@buildingsync.app)
+
+BuildingSync is built in Canada by [Node2.io](https://www.buildingsync.app/about).
+
+---
+
+# Developer reference
+
+The rest of this README is for engineers working on this repo.
 
 ## Stack
 
@@ -66,3 +123,5 @@ Both workflows require a `PAT_TOKEN_FOR_PUSH` repo secret with write
 access to the target repos. **Never edit the OpenAPI spec or Core
 package directly in their mirror repos** — edit them here and let the
 sync workflow propagate.
+
+> R&D and phased development happens in `BuildingAi-Cloud/BuildingSync-Lab`. This repo is the narrow production cut. Port forward; don't bidirectional-merge.
